@@ -91,14 +91,14 @@ class Jobs:
         """pull out a max of count jobs"""
         queues_ids = self.queues.keys()
         queues_ids.sort()
-        jobs = {}
-        for queue_id in queues:
+        jobs = [] 
+        for queue_id in self.queues:
             #skip queues that have no jobs
             if not self.queues[queue_id]:
                 continue 
             
             #recover our previous iterator
-            iteritems = self.queue_inter.get(queue_id, None)
+            iteritems = self.queue_iter.get(queue_id, None)
             if iteritems is None:
                 iteritems = self.queues[queue_id].iteritems()
                 self.queue_iter[queue_id] = iteritems
@@ -106,7 +106,8 @@ class Jobs:
             #pull a max of count jobs from the queue
             while True:
                 try:
-                    job_id, deuque_time = iteritems.next()
+                    job_id, dequeue_time = iteritems.next()
+                    print job_id
                 except StopIteration:
                     iteritems = self.queues[queue_id].iteritems()
                     self.queue_iter[queue_id] = iteritems
@@ -116,7 +117,7 @@ class Jobs:
                 ctime = time.time()
                 if ctime - dequeue_time > JOB_LEASE_TIME:
                     self.queues[queue_id][job_id] = ctime
-                    jobs[job_id] = self.jobs[job_id][JOB_DATA]
+                    jobs.append((job_id, self.jobs[job_id][JOB_DATA]))
                     if len(jobs) >= count:
                         return jobs
                 else:
