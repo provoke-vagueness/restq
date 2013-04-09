@@ -25,6 +25,10 @@ def serialise(func):
             return func(self, *a, **k)
     return with_serialisation
 
+JOB_DATA = 0
+JOB_TASKS = 1
+JOB_QUEUES = 2
+
 class Jobs:
     def __init__(self):
         self.queues = {}
@@ -40,12 +44,12 @@ class Jobs:
         job = self.jobs.pop(job_id)
         
         #clean out the queues
-        for queue_id in job['queues']:
+        for queue_id in job[JOB_QUEUES]:
             queue = self.queues[queue_id]
             queue.pop(job_id)
 
         #clean out the tasks 
-        for task_id in job['tasks']:
+        for task_id in job[JOB_TASKS]:
             task = self.tasks[task_id]
             task.remove(job_id)
             if not task:
@@ -55,20 +59,23 @@ class Jobs:
     def add(self, job_id, task_id, queue_id, data):
         """store a job into a queue"""
         #store our job 
-        job = self.jobs.get(job_id, {})
-        if not job:
-            if data != job['data']:
-                msg = "old job entry and new data != old data" % (job_id)
-                raise Exception(msg)
-        job['tasks'].add(task_id)
-        job['queues'].add(queue_id)
-        job['data'] = data 
+        job = self.jobs.get(job_id, None)
+        if job is None:
+            job = (data, set(), set())
+            self.jobs[job_id] = job
+        else:
+            if data != job[JOB_DATA]:
+                msg = "old job entry and new data != old data (%s)" % (job_id)
+                raise ValueError(msg)
+
+        job[JOB_TASKS].add(task_id)
+        job[JOB_QUEUES].add(queue_id)
 
         #add this job to the queue
         queue = self.queues.get(queue_id, None)
         if queue is None:
             queue = OrderedDict()
-            self.jobs[queue_id] = queue
+            self.queues[queue_id] = queue
         if job_id not in queue:
             queue[job_id] = 0
        
@@ -109,7 +116,7 @@ class Jobs:
                 ctime = time.time()
                 if ctime - dequeue_time > JOB_LEASE_TIME:
                     self.queues[queue_id][job_id] = ctime
-                    jobs[job_id] = self.jobs[job_id]['data']
+                    jobs[job_id] = self.jobs[job_id][JOB_DATA]
                     if len(jobs) >= count:
                         return jobs
                 else:
