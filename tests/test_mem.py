@@ -13,7 +13,7 @@ if __name__ == '__main__':
         taskcount = int(sys.argv[4])
     except:
         print("test_mem.py <datasize> <jobcount> <queuecount> <taskcount>")
-        print("python test_mem.py 20 10000 2 1000"
+        print("python test_mem.py 20 10000 2 1000")
         exit()
     t = time.time()
     for job_id in range(jobcount):
