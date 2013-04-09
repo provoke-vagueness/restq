@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-from distribute_setup import use_setuptools
-use_setuptools()
+#from distribute_setup import use_setuptools
+#use_setuptools()
 
 from setuptools import setup
 import re
@@ -8,7 +8,7 @@ import platform
 import os
 import sys
 
-def load_version(filename='restq/version.py'):
+def load_version(filename='version.py'):
     """Parse a __version__ number from a source file"""
     with open(filename) as source:
         text = source.read()
@@ -22,9 +22,8 @@ def load_version(filename='restq/version.py'):
 setup(
     name="restq",
     version=load_version(),
-    packages=['restq'],
-    package_data=dict(restq=restq_package_data),
-    data_files=data_files,
+    #packages=[""],
+    py_modules=['restq'],
     zip_safe=False,
     author="Michael Dorman",
     author_email="mjdorma@gmail.com",
