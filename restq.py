@@ -10,20 +10,51 @@ import bottle
 from bottle import request
 
 
-# the bytes data limit per job PUT
+# The bytes data limit per job PUT
 JOB_DATA_MAX_SIZE = 1024 * 2
 
-# the number of seconds a job can be leased for before it can be handed out
-# to a new requester
+# The number of seconds a job can be leased for before it can be handed out to
+# a new requester
 JOB_LEASE_TIME = 60 * 10 
 
 
+# Need to iterator to circle (ring) around the ordered dict but enable a revert
+# of the last yielded object #to ensure our queue does not loose its order/time
+# consistency
+class QueueIterator:
+    def __init__(self, queue):
+        self._queue = queue
+        self._count = 0
+        self._iter = self._queue.iteritems()
+
+    def next(self):
+        assert self._queue
+        while True:
+            try:
+                obj = self._iter.next()
+                self._count += 1
+                break
+            except StopIteration:
+                self._iter = self._queue.iteritems()
+        return obj
+
+    def revert(self):
+        self._count -= 1
+        self._iter = self._queue.iteritems()
+        index = len(self._queue) % self._count
+        while index > 0:
+            self._iter.next()
+            index -= 1
+
+
+# Serialise access to functions of Jobs
 def serialise(func):
     @wraps(func)
     def with_serialisation(self, *a, **k):
         with self.lock:
             return func(self, *a, **k)
     return with_serialisation
+
 
 JOB_DATA = 0
 JOB_TASKS = 1
@@ -76,6 +107,7 @@ class Jobs:
         if queue is None:
             queue = OrderedDict()
             self.queues[queue_id] = queue
+            self.queue_iter[queue_id] = QueueIterator(queue)
         if job_id not in queue:
             queue[job_id] = 0
        
@@ -97,21 +129,13 @@ class Jobs:
             if not self.queues[queue_id]:
                 continue 
             
-            #recover our previous iterator
-            iteritems = self.queue_iter.get(queue_id, None)
-            if iteritems is None:
-                iteritems = self.queues[queue_id].iteritems()
-                self.queue_iter[queue_id] = iteritems
+            #get our queue iterator
+            iterator = self.queue_iter[queue_id]
             
             #pull a max of count jobs from the queue
             while True:
-                try:
-                    job_id, dequeue_time = iteritems.next()
-                    print job_id
-                except StopIteration:
-                    iteritems = self.queues[queue_id].iteritems()
-                    self.queue_iter[queue_id] = iteritems
-                    continue 
+                job_id, dequeue_time = iterator.next()
+                print job_id
                 
                 #add this job to the jobs result dict and update its lease time 
                 ctime = time.time()
@@ -126,6 +150,7 @@ class Jobs:
                     #rely on the lease time being consistent such that all jobs
                     #following this point will also met this same condition
                     # -> go to next queue
+                    iterator.revert()
                     break
         return jobs 
 
