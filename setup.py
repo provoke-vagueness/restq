@@ -20,7 +20,7 @@ def load_version(filename='restq/version.py'):
         return version
 
 setup(
-    ame="restq",
+    name="restq",
     version=load_version(),
     packages=['restq'],
     package_data=dict(restq=restq_package_data),
