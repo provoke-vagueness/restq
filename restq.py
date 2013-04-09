@@ -23,7 +23,7 @@ def serialise(func):
     def with_serialisation(self, *a, **k):
         with self.lock:
             return func(self, *a, **k)
-        return with_serialisation
+    return with_serialisation
 
 class Jobs:
     def __init__(self):
@@ -188,6 +188,6 @@ def status():
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status
 
-
-bottle.run(host='localhost', port=8080, debug=True)
+if __name__ == "__main__":
+    bottle.run(host='localhost', port=8080, debug=True)
 
