@@ -28,23 +28,29 @@ def job_put(realm, job_id):
         data - input type='file' - data returned on GET job request
              - Max size data is JOB_DATA_MAX_SIZE
     """
-    work = realms.get(realm)
-    task_id = request.forms.get('task_id', type=str)
-    queue_id = request.forms.get('queue_id', type=int)
-    if task_id is None or queue_id is None:
-        bottle.abort(httplib.BAD_REQUEST, 'Require task_id and queue_id')
-    
-    data = request.files.get('data')
-    if data is not None:
-        data = data.file.read(10000)
-
+    #validate client input
     try:
-        work.add(job_id, task_id, queue_id, data)
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        body = json.loads(request.body.read(4096))
+        try:
+            task_id = body['task_id']
+            queue_id = body['queue_id']
+            data = body['data']
+
+            work = realms.get(realm)
+
+            try:
+                work.add(job_id, task_id, queue_id, data)
+            except:
+                bottle.abort(\
+                    httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        except KeyError:
+            bottle.abort(httplib.BAD_REQUEST, 'Require task_id queue_id & data')
+    except ValueError:
+        bottle.abort(httplib.BAD_REQUEST, 'Require json object in request body')
+
 
 # Get the next job
-@bottle.get('/<realm>/job/')
+@bottle.get('/<realm>/job')
 def job_get(realm):
     work = realms.get(realm)
     try:
@@ -52,6 +58,7 @@ def job_get(realm):
         job = work.pull(count=count)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+    print job
     return job
 
 # Get the status 
@@ -64,7 +71,7 @@ def status(realm):
     return status
 
 
-@bottle.get('/<realm>/task/<task_id>/')
+@bottle.get('/<realm>/task/<task_id>')
 def task_status(realm, task_id):
     work = realms.get(realm)
     try:

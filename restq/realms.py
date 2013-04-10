@@ -128,7 +128,7 @@ class Work:
         """pull out a max of count jobs"""
         queues_ids = self.queues.keys()
         queues_ids.sort()
-        jobs = [] 
+        jobs = {}
         for queue_id in self.queues:
             #skip queues that have no jobs
             if not self.queues[queue_id]:
@@ -145,7 +145,7 @@ class Work:
                 ctime = time.time()
                 if ctime - dequeue_time > self.queue_lease_time[queue_id]:
                     self.queues[queue_id][job_id] = ctime
-                    jobs.append((job_id, self.jobs[job_id][JOB_DATA]))
+                    jobs[job_id] = self.jobs[job_id][JOB_DATA]
                     if len(jobs) >= count:
                         return jobs
                 else:

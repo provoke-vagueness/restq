@@ -2,6 +2,7 @@ import unittest
 from pprint import pprint
 import time
 import os
+import json
 
 import  webtest
 
@@ -18,8 +19,38 @@ class TestApi(unittest.TestCase):
         self.app = webtest.TestApp(webapp.app)
 
     def test_doc(self):
-        resp = self.app.get('/')
+        resp = self.app.get("/")
         self.assertEquals(resp.status.lower(), "200 ok")
         self.assertEquals(resp.status_int, 200)
         self.assertTrue("<!DOCTYPE html>" in resp)
-        
+
+    def test_add_and_pull(self):
+        #add 100 jobs to the a test realm and then verify their data
+        for i in xrange(0, 100):
+            testdata = json.dumps(dict(task_id="testing", queue_id=1, data=i))
+            resp = self.app.put("/realm/job/%d" % i, testdata)
+            self.assertEquals(resp.status_int, 200)
+
+        #on the first 50 jobs, test pulling jobs in order
+        for i in xrange(0, 50):
+            resp = self.app.get("/realm/job")
+            self.assertEquals(resp.status_int, 200)
+            body = json.loads(resp.body)
+            for k,v in body.iteritems():
+                self.assertEquals(int(k), v)
+
+            #remove the job
+            resp = self.app.delete("/realm/job/%d" % i)
+            self.assertEquals(resp.status_int, 200)
+            
+        #on the next 50 jobs, test pull in one hit
+        resp = self.app.get("/realm/job?count=50")
+        self.assertEquals(resp.status_int, 200)
+        body = json.loads(resp.body)
+        for k,v in body.iteritems():
+            self.assertEquals(int(k), v)
+
+        #remove the remaining jobs
+        for i in xrange(50, 100):
+            resp = self.app.delete("/realm/job/%d" % i)
+            self.assertEquals(resp.status_int, 200)
