@@ -15,29 +15,29 @@ class TestJobs(unittest.TestCase):
         work.add(0, 0, 0, 'h')
         status = work.status
         self.assertEqual(len(status['queues']), 1)
-        self.assertEqual(status['total_work'], 1)
+        self.assertEqual(status['total_jobs'], 1)
         self.assertEqual(status['total_tasks'], 1)
     
         work.add(1, 0, 0, None)
         status = work.status
         self.assertEqual(len(status['queues']), 1)
-        self.assertEqual(status['total_work'], 2)
+        self.assertEqual(status['total_jobs'], 2)
         self.assertEqual(status['total_tasks'], 1)
  
         work.add(2, 2, 0, 443434)
         status = work.status
         self.assertEqual(len(status['queues']), 1)
-        self.assertEqual(status['total_work'], 3)
+        self.assertEqual(status['total_jobs'], 3)
         self.assertEqual(status['total_tasks'], 2)
 
         work.add(3, 2, 1, 3343.343434)
         status = work.status
         self.assertEqual(len(status['queues']), 2)
-        self.assertEqual(status['total_work'], 4)
+        self.assertEqual(status['total_jobs'], 4)
         self.assertEqual(status['total_tasks'], 2)
 
         pprint(work.tasks)
-        pprint(work.work)
+        pprint(work.jobs)
         pprint(work.queues)
  
     def test_add_diff_data(self):
