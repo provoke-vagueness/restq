@@ -65,7 +65,7 @@ class TestJobs(unittest.TestCase):
         worker = work.pull(4)
         pprint(worker)
         self.assertEqual(len(worker), 4)
-        self.assertEqual(worker[3][1], 3343.343434)
+        self.assertEqual(worker[3], 3343.343434)
 
         #make sure there are no more work available because they should be
         # checked out with the previous pull request
@@ -79,7 +79,7 @@ class TestJobs(unittest.TestCase):
         worker = work.pull(4)
         pprint(worker)
         self.assertEqual(len(worker), 4)
-        self.assertEqual(worker[1][1], None)
+        self.assertEqual(worker[1], None)
 
         #again, make sure the work are all checked out
         worker = work.pull(4)
@@ -92,7 +92,7 @@ class TestJobs(unittest.TestCase):
         time.sleep(1)        
         worker = work.pull(1)
         pprint(worker)
-        self.assertEqual(worker[0][1], 'h')
+        self.assertEqual(worker[0], 'h')
         time.sleep(1)
 
 
