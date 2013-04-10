@@ -8,7 +8,7 @@ import platform
 import os
 import sys
 
-def load_version(filename='version.py'):
+def load_version(filename='./restq/version.py'):
     """Parse a __version__ number from a source file"""
     with open(filename) as source:
         text = source.read()
@@ -22,11 +22,10 @@ def load_version(filename='version.py'):
 setup(
     name="restq",
     version=load_version(),
-    #packages=[""],
-    py_modules=['restq'],
+    packages=["restq"],
     zip_safe=False,
-    author="Michael Dorman",
-    author_email="mjdorma@gmail.com",
+    author="Michael Dorman and Stephen Tonkin",
+    author_email="mjdorma@gmail.com sptonkin@outlook.com",
     url="",
     description="All-in-memory job queue with RESTful interface.",
     long_description=open('README.rst').read(),
