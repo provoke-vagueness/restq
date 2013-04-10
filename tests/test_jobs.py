@@ -2,80 +2,79 @@ import unittest
 from pprint import pprint
 import time
 
-import restq
-from restq import Jobs
+from restq import jobs
 
 #change the lease time to 1 second while we run tests
-restq.JOB_LEASE_TIME = 0.5
+jobs.JOB_LEASE_TIME = 0.5
 
 
 class TestJobs(unittest.TestCase):
     def test_add(self):
         """add data"""
-        jobs = Jobs()
-        jobs.add(0, 0, 0, 'h')
-        status = jobs.status
+        work = jobs.get('test')
+        work.add(0, 0, 0, 'h')
+        status = work.status
         self.assertEqual(len(status['queues']), 1)
-        self.assertEqual(status['total_jobs'], 1)
+        self.assertEqual(status['total_work'], 1)
         self.assertEqual(status['total_tasks'], 1)
     
-        jobs.add(1, 0, 0, None)
-        status = jobs.status
+        work.add(1, 0, 0, None)
+        status = work.status
         self.assertEqual(len(status['queues']), 1)
-        self.assertEqual(status['total_jobs'], 2)
+        self.assertEqual(status['total_work'], 2)
         self.assertEqual(status['total_tasks'], 1)
  
-        jobs.add(2, 2, 0, 443434)
-        status = jobs.status
+        work.add(2, 2, 0, 443434)
+        status = work.status
         self.assertEqual(len(status['queues']), 1)
-        self.assertEqual(status['total_jobs'], 3)
+        self.assertEqual(status['total_work'], 3)
         self.assertEqual(status['total_tasks'], 2)
 
-        jobs.add(3, 2, 1, 3343.343434)
-        status = jobs.status
+        work.add(3, 2, 1, 3343.343434)
+        status = work.status
         self.assertEqual(len(status['queues']), 2)
-        self.assertEqual(status['total_jobs'], 4)
+        self.assertEqual(status['total_work'], 4)
         self.assertEqual(status['total_tasks'], 2)
 
-        pprint(jobs.tasks)
-        pprint(jobs.jobs)
-        pprint(jobs.queues)
+        pprint(work.tasks)
+        pprint(work.work)
+        pprint(work.queues)
  
     def test_add_diff_data(self):
         """add diff data errors"""
-        jobs = Jobs()
-        jobs.add(0, 0, 0, 'h')
+        work = jobs.get('test')
+        work.add(0, 0, 0, 'h')
         self.assertRaises(ValueError,
-                jobs.add, 0, 0, 0, 'a')
+                work.add, 0, 0, 0, 'a')
 
     def test_pull(self):
-        """test that we can pull jobs"""
-        jobs = Jobs()
-        jobs.add(0, 0, 0, 'h')
-        jobs.add(1, 0, 0, None)
-        jobs.add(2, 2, 0, 443434)
-        jobs.add(3, 2, 0, 3343.343434)
-        worker = jobs.pull(4)
+        """test that we can pull work"""
+        work = jobs.get('test')
+        work.add(0, 0, 0, 'h')
+        work.add(1, 0, 0, None)
+        work.add(2, 2, 0, 443434)
+        work.add(3, 2, 1, 3343.343434)
+        worker = work.pull(4)
         pprint(worker)
         self.assertEqual(len(worker), 4)
         self.assertEqual(worker[3][1], 3343.343434)
 
-        #make sure there are no more jobs available because they should be
+        #make sure there are no more work available because they should be
         # checked out with the previous pull request
-        worker = jobs.pull(4)
+        worker = work.pull(4)
         pprint(worker)
         self.assertFalse(worker)
 
         #now that the least time has expired, lets make sure we can check out 
-        # the jobs once again
+        # the work once again
         time.sleep(1)        
-        worker = jobs.pull(4)
+        worker = work.pull(4)
         pprint(worker)
         self.assertEqual(len(worker), 4)
-        #self.assertEqual(worker[1][1], 3343.343434)
+        self.assertEqual(worker[1][1], None)
 
-        #again, make sure the jobs are all checked out
-        worker = jobs.pull(4)
+        #again, make sure the work are all checked out
+        worker = work.pull(4)
         pprint(worker)
         self.assertFalse(worker)
 
@@ -83,9 +82,9 @@ class TestJobs(unittest.TestCase):
         # checked back in, but when we checkout the next job, we should 
         # increment to the next job in the queue
         time.sleep(1)        
-        worker = jobs.pull(1)
-        print worker
-        #self.assertEqual(worker[0], 'h')
+        worker = work.pull(1)
+        pprint(worker)
+        self.assertEqual(worker[0][1], 'h')
         time.sleep(1)
 
 
