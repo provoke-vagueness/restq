@@ -48,5 +48,6 @@ setup(
         'Topic :: Security',
         'Topic :: System :: Monitoring'
     ],
-    test_suite="tests"
+    test_suite="tests",
+    test_requires=["webtest>=2.0"]
 )

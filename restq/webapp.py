@@ -74,10 +74,24 @@ def task_status(realm, task_id):
     return jobs
 
 
+@bottle.get('/')
+def doc():
+    return """<!DOCTYPE html>
+<html>
+    <head>
+        <title>restq: a Python-based queue with a RESTful web interface</title>
+    </head>
+    <body>
+        <h1>restq</h1>
+        <p>... placeholder for usage information...</p>
+    </body>
+</html>"""
 
 
 if __name__ == "__main__":
     bottle.run(host='localhost', port=8080, debug=True)
+
+app = bottle.default_app()
 
 
 
