@@ -4,6 +4,8 @@ import webapp
 import realms 
 
 try:
+    # bjoern requires libev-dev to be installed for it to build
+    # pip install bjoern 
     import bjoern
     server="bjoern"
 except ImportError:
