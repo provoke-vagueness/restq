@@ -2,10 +2,10 @@ import sys
 import time
 from pprint import pprint
 
-import restq
-
+from restq import realms 
 
 if __name__ == '__main__':
+    jobs = realms.get('test_mem')
     try:
         datasize = int(sys.argv[1])
         jobcount = int(sys.argv[2])
@@ -15,12 +15,21 @@ if __name__ == '__main__':
         print("test_mem.py <datasize> <jobcount> <queuecount> <taskcount>")
         print("python test_mem.py 20 10000 2 1000")
         exit()
+    print("Start insert")
     t = time.time()
     for job_id in range(jobcount):
         for task_id in range(taskcount):
             for queue_id in range(queuecount):
-                restq.jobs.add(job_id, task_id, queue_id, "a" * datasize)
+                jobs.add(job_id, task_id, queue_id, "a" * datasize)
     t = time.time() - t
     print("Completed insert in %0.2f" % t)
-    pprint(restq.jobs.status)
+    pprint(jobs.status)
+
+    print("Start dequeue")
+    t = time.time()
+    c = 0
+    while jobs.pull(5):
+        c += 5
+    t = time.time() - t
+    print("Pulled %s jobs in %0.2f seconds" % (c, t))
     raw_input()

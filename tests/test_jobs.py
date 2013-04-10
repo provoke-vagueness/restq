@@ -13,7 +13,7 @@ class TestJobs(unittest.TestCase):
 
     def setUp(self):
         try:
-            os.remove(os.path.join(realms.CONFIG_ROOT, 'test'))
+            os.remove(os.path.join(realms.CONFIG_ROOT, 'test.conf'))
         except OSError:
             pass
 

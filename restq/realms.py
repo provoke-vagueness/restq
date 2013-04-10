@@ -67,7 +67,7 @@ class Work:
         self.tasks = {}
         self.jobs = {}
         self.lock = Lock()
-        self.config_path = os.path.join(CONFIG_ROOT, realm)
+        self.config_path = os.path.join(CONFIG_ROOT, realm + ".conf")
         self._load_config()
 
     @serialise
@@ -140,7 +140,6 @@ class Work:
             #pull a max of count jobs from the queue
             while True:
                 job_id, dequeue_time = iterator.next()
-                print job_id
                 
                 #add this job to the jobs result dict and update its lease time 
                 ctime = time.time()
