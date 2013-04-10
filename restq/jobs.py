@@ -2,12 +2,6 @@ import time
 from collections import OrderedDict
 from threading import Lock
 from functools import wraps
-import traceback
-import json
-import httplib
-
-import bottle
-from bottle import request
 
 
 # The bytes data limit per job PUT
@@ -60,7 +54,7 @@ JOB_DATA = 0
 JOB_TASKS = 1
 JOB_QUEUES = 2
 
-class Jobs:
+class Work:
     def __init__(self):
         self.queues = {}
         self.queue_iter = {}
@@ -164,63 +158,20 @@ class Jobs:
              total_tasks = len(self.tasks),
              queues = queue_status)
 
-jobs = Jobs()
 
+realms = dict()
 
-# Remove a job from a queue 
-@bottle.delete('/job/<job_id>')
-def job_delete(job_id):
-    try:
-        jobs.remove(job_id)
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+def get(realm):
+    work = realms.get(realm, None)
+    if work is None:
+        work = Work()
+        realms[realm] = work
+    return work
 
-
-# Put a job into a queue
-@bottle.put('/job/<job_id>')
-def job_put(job_id):
-    """
-    Required fields:
-        task_id - input type='text' - defines which task the job belongs to
-        queue_id - input type='int' - defines which queue_id the job belongs 
-    Optional fields:
-        data - input type='file' - data returned on GET job request
-             - Max size data is JOB_DATA_MAX_SIZE
-    """
-    task_id = request.forms.get('task_id', type=str)
-    queue_id = request.forms.get('queue_id', type=int)
-    if task_id is None or queue_id is None:
-        bottle.abort(httplib.BAD_REQUEST, 'Require task_id and queue_id')
-    
-    data = request.files.get('data')
-    if data is not None:
-        data = data.file.read(10000)
-
-    try:
-        jobs.add(job_id, task_id, queue_id, data)
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-
-
-# Get the next job
-@bottle.get('/job/')
-def job_get():
-    try:
-        count = request.GET.get('count', default=1, type=int)
-        job = jobs.pull(count=count)
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-    return job
-
-# Get the status 
-@bottle.get('/status')
-def status():
-    try:
-        status = jobs.status
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+def get_status():
+    status = {}
+    for realm, work in realms.iteritems():
+        status[realm] = work.status
     return status
 
-if __name__ == "__main__":
-    bottle.run(host='localhost', port=8080, debug=True)
 
