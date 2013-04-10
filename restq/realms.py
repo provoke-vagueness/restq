@@ -1,15 +1,19 @@
 import time
+import json
 from collections import OrderedDict
 from threading import Lock
 from functools import wraps
+import os
 
-
-# The bytes data limit per job PUT
-JOB_DATA_MAX_SIZE = 1024 * 2
 
 # The number of seconds a job can be leased for before it can be handed out to
 # a new requester
-JOB_LEASE_TIME = 60 * 10 
+DEFAULT_LEASE_TIME = 60 * 10 
+
+#setup the config path
+CONFIG_ROOT = os.path.join(os.path.expanduser("~"), ".restq")
+if not os.path.exists(CONFIG_ROOT):
+    os.makedirs(CONFIG_ROOT)
 
 
 # Need to iterator to circle (ring) around the ordered dict but enable a revert
@@ -55,12 +59,16 @@ JOB_TASKS = 1
 JOB_QUEUES = 2
 
 class Work:
-    def __init__(self):
+    def __init__(self, realm):
+        self.realm = realm 
         self.queues = {}
         self.queue_iter = {}
+        self.queue_lease_time = {}
         self.tasks = {}
         self.jobs = {}
         self.lock = Lock()
+        self.config_path = os.path.join(CONFIG_ROOT, realm)
+        self._load_config()
 
     @serialise
     def remove(self, job_id):
@@ -93,15 +101,18 @@ class Work:
                 msg = "old job entry and new data != old data (%s)" % (job_id)
                 raise ValueError(msg)
 
+        #update the job with a record of it existing in this task and queue
         job[JOB_TASKS].add(task_id)
         job[JOB_QUEUES].add(queue_id)
 
         #add this job to the queue
         queue = self.queues.get(queue_id, None)
         if queue is None:
-            queue = OrderedDict()
-            self.queues[queue_id] = queue
-            self.queue_iter[queue_id] = QueueIterator(queue)
+            #create a new queue
+            queue = self._create_queue(queue_id, DEFAULT_LEASE_TIME)
+            self._save_config()
+        
+        #if the job is not in the queue, add it and initialise the checkout time
         if job_id not in queue:
             queue[job_id] = 0
        
@@ -133,7 +144,7 @@ class Work:
                 
                 #add this job to the jobs result dict and update its lease time 
                 ctime = time.time()
-                if ctime - dequeue_time > JOB_LEASE_TIME:
+                if ctime - dequeue_time > self.queue_lease_time[queue_id]:
                     self.queues[queue_id][job_id] = ctime
                     jobs.append((job_id, self.jobs[job_id][JOB_DATA]))
                     if len(jobs) >= count:
@@ -158,19 +169,51 @@ class Work:
              total_tasks = len(self.tasks),
              queues = queue_status)
 
+    @serialise
+    def set_lease_time(self, queue_id, lease_time):
+        """set the lease time for the given queue_id"""
+        queue = self.queues.get(queue_id, None)
+        if queue is None:
+            self._create_queue(queue_id, lease_time)
+        else:
+            self.queue_lease_time[queue_id] = lease_time
+        self._save_config()
 
-realms = dict()
+    def _load_config(self):
+        if not os.path.exists(self.config_path):
+            self._save_config()
+            return
+        with open(self.config_path, 'rb') as f:
+            config = json.loads(f.read())
+        for queue_id, lease_time in config['queues']:
+            self._create_queue(queue_id, lease_time)
+
+    def _save_config(self):
+        config = dict(queues=[])
+        for queue_id in self.queues:
+            config['queues'].append((queue_id, self.queue_lease_time[queue_id]))
+        with open(self.config_path, 'wb') as f:
+            f.write(json.dumps(config))
+
+    def _create_queue(self, queue_id, lease_time):
+        queue = OrderedDict()
+        self.queues[queue_id] = queue
+        self.queue_iter[queue_id] = QueueIterator(queue)
+        self.queue_lease_time[queue_id] = lease_time 
+        return queue
+
+_realms = dict()
 
 def get(realm):
-    work = realms.get(realm, None)
+    work = _realms.get(realm, None)
     if work is None:
-        work = Work()
-        realms[realm] = work
+        work = Work(realm)
+        _realms[realm] = work
     return work
 
 def get_status():
     status = {}
-    for realm, work in realms.iteritems():
+    for realm, work in _realms.iteritems():
         status[realm] = work.status
     return status
 

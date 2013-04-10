@@ -1,17 +1,25 @@
 import unittest
 from pprint import pprint
 import time
+import os
 
-from restq import jobs
+from restq import realms 
 
 #change the lease time to 1 second while we run tests
-jobs.JOB_LEASE_TIME = 0.5
+realms.DEFAULT_LEASE_TIME = 0.5
 
 
 class TestJobs(unittest.TestCase):
+
+    def setUp(self):
+        try:
+            os.remove(os.path.join(realms.CONFIG_ROOT, 'test'))
+        except OSError:
+            pass
+
     def test_add(self):
         """add data"""
-        work = jobs.get('test')
+        work = realms.get('test')
         work.add(0, 0, 0, 'h')
         status = work.status
         self.assertEqual(len(status['queues']), 1)
@@ -42,14 +50,14 @@ class TestJobs(unittest.TestCase):
  
     def test_add_diff_data(self):
         """add diff data errors"""
-        work = jobs.get('test')
+        work = realms.get('test')
         work.add(0, 0, 0, 'h')
         self.assertRaises(ValueError,
                 work.add, 0, 0, 0, 'a')
 
     def test_pull(self):
         """test that we can pull work"""
-        work = jobs.get('test')
+        work = realms.get('test')
         work.add(0, 0, 0, 'h')
         work.add(1, 0, 0, None)
         work.add(2, 2, 0, 443434)
