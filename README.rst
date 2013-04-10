@@ -86,5 +86,5 @@ version 0.0.1 (10/04/2013)
 .. _yara-ctypes/issues: https://github.com/provoke-vagueness/restq/issues
 .. _notes on building: http://packages.python.org/yara/howto/build.html
 .. _yara-ctypes documentation: http://packages.python.org/yara/
-.. |build_status| image:: https://secure.travis-ci.org/mjdorma/yara-ctypes.png?branch=master
-   :target: http://travis-ci.org/#!/mjorma/yara-ctypes
+.. |build_status| image:: https://secure.travis-ci.org/provoke-vagueness/restq.png?branch=master
+   :target: http://travis-ci.org/#!/provoke-vagueness/restq
