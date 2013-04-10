@@ -16,9 +16,9 @@ if not os.path.exists(CONFIG_ROOT):
     os.makedirs(CONFIG_ROOT)
 
 
-# Need to iterator to circle (ring) around the ordered dict but enable a revert
-# of the last yielded object #to ensure our queue does not loose its order/time
-# consistency
+# Need a circular (ring) iterator to walk the ordered dict and we also need to 
+# be able to revert a yielded object in some circumstances...  This facility
+# makes it possible to keep our queue order and fairness
 class QueueIterator:
     def __init__(self, queue):
         self._queue = queue
