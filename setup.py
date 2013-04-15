@@ -8,6 +8,10 @@ import platform
 import os
 import sys
 
+
+install_requires = ["bottle>=0.11",
+                    "requests>=1.11"]
+
 def load_version(filename='./restq/version.py'):
     """Parse a __version__ number from a source file"""
     with open(filename) as source:
@@ -30,7 +34,12 @@ setup(
     description="All-in-memory job queue with RESTful interface.",
     long_description=open('README.rst').read(),
     license="Apache Software Licence",
-    install_requires = ["bottle>=0.11"],
+    install_requires = install_requires,
+    entry_points={
+        'console_scripts': [
+            'resq-webapp = restq.webapp:entry'
+            ]
+    },
     platforms=['cygwin', 'win', 'linux'],
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
