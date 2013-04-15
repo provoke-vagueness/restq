@@ -1,6 +1,9 @@
+from __future__ import print_function
 import traceback
 import json
 import httplib
+import optarg
+import sys
 
 import bottle
 from bottle import request
@@ -62,10 +65,11 @@ def job_get(realm):
     return job
 
 # Get the status 
-@bottle.get('/status')
+@bottle.get('/<realm>/status')
 def status(realm):
+    work = realms.get(realm)
     try:
-        status = realms.get_status()
+        status = work.status
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status
@@ -82,23 +86,69 @@ def task_status(realm, task_id):
 
 
 @bottle.get('/')
-def doc():
-    return """<!DOCTYPE html>
-<html>
-    <head>
-        <title>restq: a Python-based queue with a RESTful web interface</title>
-    </head>
-    <body>
-        <h1>restq</h1>
-        <p>... placeholder for usage information...</p>
-    </body>
-</html>"""
+def realms_status():
+    return realms.get_status()
 
-
-if __name__ == "__main__":
-    bottle.run(host='localhost', port=8080, debug=True)
 
 app = bottle.default_app()
+
+
+__help__ = """
+NAME restq-webapp - Start the restq webapp server
+
+SYNOPSIS
+    restq-webapp [OPTIONS]... [HOST:PORT]
+
+DESCRIPTION
+
+arguments 
+    HOST:PORT default '127.0.0.1:8080'
+        specify the ip and port to bind this server too
+
+options 
+    --server=
+        choose the server adapter to use.
+
+"""
+
+def main(args):
+    try:
+        opts, args = getopt(args, 'h',['help',
+            'server=',
+            ])
+    except Exception as exc:
+        print("Getopt error: %s" % (exc), file=sys.stderr)
+        return -1
+
+    bottle_run_kwargs = dict(app=app)
+    for opt, arg in opts:
+        if opt in ['-h', '--help']:
+            print(__help__)
+            return 0
+        if opt in ['--server']:
+            bottle_run_kwargs['server'] = arg
+    if args:
+        try:
+            host, port = args[0].split(':')
+        except Exception as exc:
+            print("failed to parse IP:PORT (%s)" % args[0])
+            return -1
+        try:
+            port = int(port)
+        except ValueError:
+            print("failed to convert port to int (%s)" % port)
+            return -1
+        bottle_run_kwargs['host'] = host
+        bottle_run_kwargs['port'] = port
+
+    bottle.run(**bottle_run_kwargs)
+
+
+entry = lambda :main(sys.argv[1:])
+if __name__ == "__main__":
+    sys.exit(entry())
+
+    bottle.run(host='localhost', port=8080, debug=True)
 
 
 
