@@ -67,12 +67,14 @@ class Work:
         self.tasks = {}
         self.jobs = {}
         self.lock = Lock()
-        self.config_path = os.path.join(CONFIG_ROOT, realm + ".conf")
+        self.config_path = os.path.join(CONFIG_ROOT, realm + ".realm")
         self._load_config()
 
     @serialise
-    def remove(self, job_id):
+    def remove_job(self, job_id):
         """remove job_id from the system"""
+        self._remove_job(job_id)
+    def _remove_job(self, job_id):
         #remove the job
         job = self.jobs.pop(job_id)
         
@@ -87,6 +89,38 @@ class Work:
             task.remove(job_id)
             if not task:
                 self.tasks.pop(task_id)
+
+    @serialise
+    def remove_task(self, task_id):
+        """remove a task_id from the system"""
+        jobs = self.tasks.pop(task_id, [])
+        for job_id in jobs:
+            job = self.jobs[job_id]
+            job[JOB_TASKS].remove(task_id)
+            if not job[JOB_TASKS]:
+                self._remove_job(job_id)        
+
+    @serialise 
+    def status_job(self, job_id):
+        """return the status of a job"""
+        self._status_job(job_id)
+    def _status_job(self, job_id):
+        status = {'tasks':job[JOB_TASKS], 'queues':[]}
+        t = time.time()
+        for queue_id in job[JOB_QUEUES]:
+            checkout_time = self.queues[queue_id][job_id]
+            if checkout_time != 0:
+                checkout = time.time() - checkout_time
+            status['queues'].append((queue_id, checkout))
+        return status
+
+    @serialise
+    def status_task(self, task_id):
+        """return the status of a task"""
+        status = {}
+        for job_id in self.tasks[task_id]:
+            status[job_id] = self._status_job(job_id)
+        return status
 
     @serialise
     def add(self, job_id, task_id, queue_id, data):
@@ -201,14 +235,21 @@ class Work:
         self.queue_lease_time[queue_id] = lease_time 
         return queue
 
-_realms = dict()
 
+_realms = dict()
 def get(realm):
     work = _realms.get(realm, None)
     if work is None:
         work = Work(realm)
         _realms[realm] = work
     return work
+
+
+for filename in os.listdir(CONFIG_ROOT):  
+    name, ext = os.path.splitext(filename)
+    if ext == '.realm':
+        get(name)
+
 
 def get_status():
     status = {}
