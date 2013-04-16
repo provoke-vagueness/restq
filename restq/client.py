@@ -7,7 +7,7 @@ class Realm(object):
         self._realm = realm
         self._url = url
 
-    def __str__(self)
+    def __str__(self):
         return str(self.status)
 
     def remove(self, job_id):
@@ -36,7 +36,7 @@ class Realms(object):
         if not url.endswith('/'):
             url += '/'
         self._url = url
-        sel._special = set(['realms', 'keys', 'items', 'values', 'get', 
+        self._special = set(['realms', 'keys', 'items', 'values', 'get', 
                             'trait_names'])
         self.realms
 
@@ -76,7 +76,7 @@ class Realms(object):
 
     def __getattribute__(self, k):
         if k.startswith('_') or k in self._special:
-            return object.__getattribute__(self k)
+            return object.__getattribute__(self, k)
         realm = self.__dict__.get(k, None)
         if realm is None:
             realm = Realm(k, self._url)
