@@ -2,8 +2,8 @@ from __future__ import print_function
 import traceback
 import json
 import httplib
-import optarg
 import sys
+from getopt import getopt
 
 import bottle
 from bottle import request
@@ -15,14 +15,14 @@ import realms
 def job_delete(realm, job_id):
     work = realms.get(realm)
     try:
-        work.remove(job_id)
+        work.remove_job(job_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
 
 
 # Put a job into a queue
 @bottle.put('/<realm>/job/<job_id>')
-def job_put(realm, job_id):
+def job_add(realm, job_id):
     """
     Required fields:
         task_id - input type='text' - defines which task the job belongs to
@@ -52,21 +52,53 @@ def job_put(realm, job_id):
         bottle.abort(httplib.BAD_REQUEST, 'Require json object in request body')
 
 
+# Put a job into a queue
+@bottle.get('/<realm>/job/<job_id>')
+def job_status(realm, job_id):
+    work = realms.get(realm)
+    try:
+        status = work.status_job(job_id)
+    except:
+        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+    return status
+
+
 # Get the next job
 @bottle.get('/<realm>/job')
-def job_get(realm):
+def job_pull(realm):
     work = realms.get(realm)
     try:
         count = request.GET.get('count', default=1, type=int)
         job = work.pull(count=count)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-    print job
     return job
 
-# Get the status 
+
+# Delete the task
+@bottle.delete('/<realm>/task/<task_id>')
+def task_delete(realm, task_id):
+    work = realms.get(realm)
+    try:
+        work.remove_task(task_id)
+    except:
+        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+
+
+# Get the status of the task 
+@bottle.get('/<realm>/task/<task_id>')
+def task_status(realm, task_id):
+    work = realms.get(realm)
+    try:
+        status = work.status_task(task_id)
+    except:
+        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+    return status 
+
+
+# Get the status of the realm
 @bottle.get('/<realm>/status')
-def status(realm):
+def realm_status(realm):
     work = realms.get(realm)
     try:
         status = work.status
@@ -75,16 +107,7 @@ def status(realm):
     return status
 
 
-@bottle.get('/<realm>/task/<task_id>')
-def task_status(realm, task_id):
-    work = realms.get(realm)
-    try:
-        jobs = work.tasks[task_id]
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-    return jobs
-
-
+# Get the status from all of the realms
 @bottle.get('/')
 def realms_status():
     return realms.get_status()
@@ -147,10 +170,5 @@ def main(args):
 entry = lambda :main(sys.argv[1:])
 if __name__ == "__main__":
     sys.exit(entry())
-
-    bottle.run(host='localhost', port=8080, debug=True)
-
-
-
 
 
