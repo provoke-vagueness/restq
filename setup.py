@@ -10,7 +10,7 @@ import sys
 
 
 install_requires = ["bottle>=0.11",
-                    "requests>=1.11"]
+                    "requests>=1.1.0"]
 
 def load_version(filename='./restq/version.py'):
     """Parse a __version__ number from a source file"""
