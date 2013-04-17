@@ -29,7 +29,7 @@ def remove_task(realm_id, task_id):
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
 
 @bottle.delete('/<realm_id>/project/<project_id>')
-def remove_project(realm_id, job_id):
+def remove_project(realm_id, project_id):
     """Remove a project from a realm"""
     realm = realms.get(realm_id)
     try:
@@ -52,15 +52,14 @@ def add(realm_id, job_id):
     try:
         body = json.loads(request.body.read(4096))
         try:
-            projects = body.get('projects', {})
-            if 'project' in body:
-                project_id, task_id = body['project']
-                projects[project_id] = [task_id,]
+            project_id = body.get('project_id', None)
+            task_id = body.get('task_id', None)
             queue_id = body['queue_id']
             data = body['data']
             realm = realms.get(realm_id)
             try:
-                realm.add(project, job_id, queue_id, data)
+                realm.add(job_id, queue_id, data, project_id=project_id,
+                                    task_id=task_id)
             except:
                 bottle.abort(\
                     httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
@@ -94,7 +93,7 @@ def get_project_state(realm_id, project_id):
     """Get the status of a project"""
     realm = realms.get(realm_id)
     try:
-        status = realm.get_project_state(task_id)
+        status = realm.get_project_state(project_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status
