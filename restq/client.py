@@ -10,16 +10,50 @@ class Realm(object):
     def __str__(self):
         return str(self.status)
 
-    def remove(self, job_id):
+    def remove_job(self, job_id):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
         requests.delete(url)
 
-    def add(self, job_id, task_id, queue_id, data):
+    def remove_task(self, task_id):
+        url = "%s%s/task/%s" % (self._url, self._realm, task_id)
+        requests.delete(url)
+
+    def remove_project(self, project_id):
+        url = "%s%s/project/%s" % (self._url, self._realm, project_id)
+        requests.delete(url)
+
+    def get_job_state(self, job_id):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
-        body = json.dumps({'task_id':task_id,
-                           'queue_id':queue_id,
-                           'data':data})
-        requests.put(url, data=body)
+        requests.get(url)
+
+    def get_task_state(self, task_id):
+        url = "%s%s/task/%s" % (self._url, self._realm, task_id)
+        requests.get(url)
+
+    def get_project_state(self, project_id):
+        url = "%s%s/project/%s" % (self._url, self._realm, project_id)
+        requests.get(url)
+
+    def set_default_lease_time(self, lease_time):
+        pass #TODO
+
+    def set_queue_lease_time(self, queue_id, lease_time):
+        pass #TODO
+
+    def add(self, job_id, queue_id, data, project_id=None, task_id=None):
+        """
+
+        """
+        url = "%s%s/job/%s" % (self._url, self._realm, job_id)
+        data = {'task_id':task_id,
+                'queue_id':queue_id,
+                'data':data}
+        if project_id is not None:
+            data['project_id'] = project_id
+        if task_id is not None:
+            data['task_id'] = task_id
+        data = json.dumps(data)
+        requests.put(url, data=data)
 
     def pull(self, count=5):
         url = "%s%s/job?count=%s" % (self._url, self._realm, count)
