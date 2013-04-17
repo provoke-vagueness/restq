@@ -58,11 +58,6 @@ class TestJobs(unittest.TestCase):
         self.assertEqual(status['total_tasks'], 2)
         self.assertEqual(status['total_projects'], 2)
 
-#       pprint(realm.tasks)
-#       pprint(realm.projects)
-#       pprint(realm.jobs)
-#       pprint(realm.queues)
-
 
     def test_remove_job(self):
         realm = realms.get('test')
@@ -145,19 +140,19 @@ class TestJobs(unittest.TestCase):
         projects = {'project 1':['task 2']}
         realm.add(projects,  "job 2", 'q0', 'h')
 
-        print ("Before removing job 1:")
-        pprint(realm.tasks)
-        pprint(realm.projects)
-        pprint(realm.jobs)
-        pprint(realm.queues)
+#       print ("Before removing job 1:")
+#       pprint(realm.tasks)
+#       pprint(realm.projects)
+#       pprint(realm.jobs)
+#       pprint(realm.queues)
 
         realm.remove_project("project 1")
 
-        print ("After removing project 1:")
-        pprint(realm.tasks)
-        pprint(realm.projects)
-        pprint(realm.jobs)
-        pprint(realm.queues)
+#       print ("After removing project 1:")
+#       pprint(realm.tasks)
+#       pprint(realm.projects)
+#       pprint(realm.jobs)
+#       pprint(realm.queues)
 
         status = realm.status
         self.assertEqual(len(status['queues']), 2)
@@ -165,6 +160,26 @@ class TestJobs(unittest.TestCase):
         self.assertEqual(status['total_tasks'], 1)
         self.assertEqual(status['total_projects'], 1)
 
+    def test_get_state(self):
+        realm = realms.get('test')
+        projects = {'project 1':['task 1']}
+        realm.add(projects, "job 1", 'q0', 'h')
+        projects = {'project 1':['task 1']}
+        realm.add(projects, "job 1", 'q0', 'h')
+        
+        projects = {'project 2':['task 1']}
+        realm.add(projects,  "job 1", 'q1', 'h')
+        realm.add(projects,  "job 3", 'q1', 'h')
+
+        projects = {'project 1':['task 2']}
+        realm.add(projects,  "job 2", 'q0', 'h')
+
+        state = realm.get_job_state("job 1")
+        pprint(state)
+        state = realm.get_task_state("task 1")
+        pprint(state)
+        state = realm.get_project_state("project 1")
+        pprint(state)
 
     def test_add_diff_data(self):
         """add diff data errors"""
@@ -174,19 +189,18 @@ class TestJobs(unittest.TestCase):
         self.assertRaises(ValueError,
                 realm.add, projects, "job 1", "q0", "data broke")
 
-
     def test_pull(self):
-        """test that we can pull realm"""
         realm = realms.get('test')
         projects = {'project 1':['task 1']}
-        realm.add(projects, "job 0", 0, 'h')
-        realm.add(projects, "job 1", 0, None)
-        realm.add(projects, "job 2", 0, 443434)
-        realm.add(projects, "job 3", 1, 3343.343434)
+        realm.add(projects, "job 0", "q0", 'h')
+        realm.add(projects, "job 1", "q0", None)
+        realm.add(projects, "job 2", "q0", 443434)
+        realm.add(projects, "job 3", "q1", 3343.343434)
         realmer = realm.pull(4)
         pprint(realmer)
+        realmer = dict(realmer)
         self.assertEqual(len(realmer), 4)
-        self.assertEqual(realmer["job 3"], 3343.343434)
+        self.assertEqual(realmer["job 3"][1], 3343.343434)
 
         #make sure there are no more realm available because they should be
         # checked out with the previous pull request
@@ -199,8 +213,9 @@ class TestJobs(unittest.TestCase):
         time.sleep(1)        
         realmer = realm.pull(4)
         pprint(realmer)
+        realmer = dict(realmer)
         self.assertEqual(len(realmer), 4)
-        self.assertEqual(realmer["job 1"], None)
+        self.assertEqual(realmer["job 1"][1], None)
 
         #again, make sure the realm are all checked out
         realmer = realm.pull(4)
@@ -213,8 +228,8 @@ class TestJobs(unittest.TestCase):
         time.sleep(1)        
         realmer = realm.pull(1)
         pprint(realmer)
-        self.assertEqual(realmer["job 0"], 'h')
-        time.sleep(1)
+        realmer = dict(realmer)
+        self.assertEqual(realmer["job 0"][1], 'h')
 
 
 
