@@ -24,15 +24,15 @@ class Realm(object):
 
     def get_job_state(self, job_id):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
-        requests.get(url)
+        return requests.get(url)
 
     def get_task_state(self, task_id):
         url = "%s%s/task/%s" % (self._url, self._realm, task_id)
-        requests.get(url)
+        return requests.get(url)
 
     def get_project_state(self, project_id):
         url = "%s%s/project/%s" % (self._url, self._realm, project_id)
-        requests.get(url)
+        return requests.get(url)
 
     def set_default_lease_time(self, lease_time):
         pass #TODO
