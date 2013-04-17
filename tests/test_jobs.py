@@ -19,8 +19,7 @@ class TestJobs(unittest.TestCase):
     def test_add(self):
         """add data"""
         realm = realms.get('test')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, 0, 'q0', 'h')
+        realm.add(0, 'q0', 'h', project_id='project 1', task_id='task 1')
 
         status = realm.status
         self.assertEqual(len(status['queues']), 1)
@@ -28,30 +27,29 @@ class TestJobs(unittest.TestCase):
         self.assertEqual(status['total_tasks'], 1)
         self.assertEqual(status['total_projects'], 1)
 
-        realm.add(projects, 1, 'q0', None)
+        realm.add(1, 'q0', None, project_id='project 1', task_id='task 1')
         status = realm.status
         self.assertEqual(len(status['queues']), 1)
         self.assertEqual(status['total_jobs'], 2)
         self.assertEqual(status['total_tasks'], 1)
         self.assertEqual(status['total_projects'], 1)
  
-        projects = {'project 1':['task 2',]}
-        realm.add(projects, 2, 'q0', 443434)
+        realm.add(2, 'q0', 443434, project_id='project 1', task_id='task 2')
         status = realm.status
         self.assertEqual(len(status['queues']), 1)
         self.assertEqual(status['total_jobs'], 3)
         self.assertEqual(status['total_tasks'], 2)
         self.assertEqual(status['total_projects'], 1)
 
-        projects = {'project 2':['task 2',]}
-        realm.add(projects, 2, 'q0', 443434)
+        realm.add(2, 'q0', 443434, project_id='project 2', task_id='task 2')
         status = realm.status
         self.assertEqual(len(status['queues']), 1)
         self.assertEqual(status['total_jobs'], 3)
         self.assertEqual(status['total_tasks'], 2)
         self.assertEqual(status['total_projects'], 2)
 
-        realm.add(projects, 3, 'q1', 3343.343434)
+        realm.add(3, 'q1', 3343.343434, project_id='project 2', 
+                        task_id='task 2')
         status = realm.status
         self.assertEqual(len(status['queues']), 2)
         self.assertEqual(status['total_jobs'], 4)
@@ -61,16 +59,10 @@ class TestJobs(unittest.TestCase):
 
     def test_remove_job(self):
         realm = realms.get('test')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'h')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'h')
-        
-        projects = {'project 2':['task 1']}
-        realm.add(projects,  "job 1", 'q1', 'h')
-
-        projects = {'project 1':['task 2']}
-        realm.add(projects,  "job 2", 'q0', 'h')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 1')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 1')
+        realm.add("job 1", 'q1', 'h', project_id='project 2', task_id='task 1')
+        realm.add("job 2", 'q0', 'h', project_id='project 1', task_id='task 2')
 
 #       print ("Before removing job 1:")
 #       pprint(realm.tasks)
@@ -95,16 +87,10 @@ class TestJobs(unittest.TestCase):
 
     def test_remove_task(self):
         realm = realms.get('test')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'h')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'h')
-        
-        projects = {'project 2':['task 1']}
-        realm.add(projects,  "job 1", 'q1', 'h')
-
-        projects = {'project 1':['task 2']}
-        realm.add(projects,  "job 2", 'q0', 'h')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 1')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 1')
+        realm.add("job 1", 'q1', 'h', project_id='project 2', task_id='task 1')
+        realm.add("job 2", 'q0', 'h', project_id='project 1', task_id='task 2')
 
   #     print ("Before removing job 1:")
   #     pprint(realm.tasks)
@@ -128,31 +114,25 @@ class TestJobs(unittest.TestCase):
 
     def test_remove_project(self):
         realm = realms.get('test')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'h')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'h')
-        
-        projects = {'project 2':['task 1']}
-        realm.add(projects,  "job 1", 'q1', 'h')
-        realm.add(projects,  "job 3", 'q1', 'h')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 1')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 1')
+        realm.add("job 2", 'q1', 'h', project_id='project 2', task_id='task 1')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 2')
 
-        projects = {'project 1':['task 2']}
-        realm.add(projects,  "job 2", 'q0', 'h')
 
-#       print ("Before removing job 1:")
-#       pprint(realm.tasks)
-#       pprint(realm.projects)
-#       pprint(realm.jobs)
-#       pprint(realm.queues)
+        print ("Before removing project 1:")
+        pprint(realm.tasks)
+        pprint(realm.projects)
+        pprint(realm.jobs)
+        pprint(realm.queues)
 
         realm.remove_project("project 1")
 
-#       print ("After removing project 1:")
-#       pprint(realm.tasks)
-#       pprint(realm.projects)
-#       pprint(realm.jobs)
-#       pprint(realm.queues)
+        print ("After removing project 1:")
+        pprint(realm.tasks)
+        pprint(realm.projects)
+        pprint(realm.jobs)
+        pprint(realm.queues)
 
         status = realm.status
         self.assertEqual(len(status['queues']), 2)
@@ -162,17 +142,10 @@ class TestJobs(unittest.TestCase):
 
     def test_get_state(self):
         realm = realms.get('test')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'h')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'h')
-        
-        projects = {'project 2':['task 1']}
-        realm.add(projects,  "job 1", 'q1', 'h')
-        realm.add(projects,  "job 3", 'q1', 'h')
-
-        projects = {'project 1':['task 2']}
-        realm.add(projects,  "job 2", 'q0', 'h')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 1')
+        realm.add("job 1", 'q0', 'h', project_id='project 1', task_id='task 1')
+        realm.add("job 1", 'q1', 'h', project_id='project 2', task_id='task 1')
+        realm.add("job 2", 'q0', 'h', project_id='project 1', task_id='task 2')
 
         state = realm.get_job_state("job 1")
         pprint(state)
@@ -184,18 +157,16 @@ class TestJobs(unittest.TestCase):
     def test_add_diff_data(self):
         """add diff data errors"""
         realm = realms.get('test')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 1", 'q0', 'data one')
+        realm.add("job 1", 'q0', 'data one')
         self.assertRaises(ValueError,
-                realm.add, projects, "job 1", "q0", "data broke")
+                realm.add, "job 1", "q0", "data broke")
 
     def test_pull(self):
         realm = realms.get('test')
-        projects = {'project 1':['task 1']}
-        realm.add(projects, "job 0", "q0", 'h')
-        realm.add(projects, "job 1", "q0", None)
-        realm.add(projects, "job 2", "q0", 443434)
-        realm.add(projects, "job 3", "q1", 3343.343434)
+        realm.add("job 0", "q0", 'h')
+        realm.add("job 1", "q0", None)
+        realm.add("job 2", "q0", 443434)
+        realm.add("job 3", "q1", 3343.343434)
         realmer = realm.pull(4)
         pprint(realmer)
         realmer = dict(realmer)
