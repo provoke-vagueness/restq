@@ -10,6 +10,7 @@ import os
 # a new requester
 DEFAULT_LEASE_TIME = 60 * 10 
 
+
 #setup the config path
 CONFIG_ROOT = os.path.join(os.path.expanduser("~"), ".restq")
 if not os.path.exists(CONFIG_ROOT):
@@ -55,15 +56,22 @@ def serialise(func):
 
 
 JOB_DATA = 0
-JOB_TASKS = 1
-JOB_QUEUES = 2
+JOB_PROJECTS = 1
+JOB_TASKS = 2
+JOB_QUEUES = 3
+TASK_JOBS = 0
+TASK_PROJECTS = 1
+PROJECT_JOBS = 0
+PROJECT_TASKS = 1
 
-class Work:
+
+class Realm:
     def __init__(self, realm):
         self.realm = realm 
         self.queues = {}
         self.queue_iter = {}
         self.queue_lease_time = {}
+        self.projects = {}
         self.tasks = {}
         self.jobs = {}
         self.lock = Lock()
@@ -75,68 +83,105 @@ class Work:
         """remove job_id from the system"""
         self._remove_job(job_id)
     def _remove_job(self, job_id):
-        #remove the job
+        # remove the job
         job = self.jobs.pop(job_id)
         
-        #clean out the queues
+        # remove from queues
         for queue_id in job[JOB_QUEUES]:
             queue = self.queues[queue_id]
             queue.pop(job_id)
 
-        #clean out the tasks 
+        # remove from tasks
+        empty_tasks = []
         for task_id in job[JOB_TASKS]:
             task = self.tasks[task_id]
-            task.remove(job_id)
-            if not task:
+            task[TASK_JOBS].remove(job_id)
+            # if there are no more jobs in task, remove it
+            if not task[TASK_JOBS]:
                 self.tasks.pop(task_id)
+                for project_id in task[TASK_PROJECTS]:
+                    self.projects[project_id][PROJECT_TASKS].remove(task_id)
+
+        # remove from projects 
+        empty_projects = []
+        for project_id in job[JOB_PROJECTS]:
+            project = self.projects[project_id]
+            project[PROJECT_JOBS].remove(job_id)
+            # if there are no more jobs in project, remove it
+            if not project[TASK_JOBS]:
+                self.projects.pop(project_id)
+                for task_id in project[PROJECT_TASKS]:
+                    self.tasks[task_id][PROJECT_TASKS].remove(project_id)
 
     @serialise
     def remove_task(self, task_id):
-        """remove a task_id from the system"""
-        jobs = self.tasks.pop(task_id, [])
-        for job_id in jobs:
-            job = self.jobs[job_id]
-            job[JOB_TASKS].remove(task_id)
-            if not job[JOB_TASKS]:
-                self._remove_job(job_id)        
+        """remove a task and all of its jobs from the system"""
+        task = self.tasks[task_id]
+        for job_id in [i for i in task[TASK_JOBS]]:
+            self._remove_job(job_id)
 
     @serialise 
-    def status_job(self, job_id):
+    def remove_project(self, project_id):
+        """remove a task and all of its jobs from the system"""
+        project = self.projects[project_id]
+        for job_id in [i for i in project[PROJECT_JOBS]]:
+            self._remove_job(job_id)
+
+    @serialise 
+    def get_job_state(self, job_id):
         """return the status of a job"""
-        self._status_job(job_id)
-    def _status_job(self, job_id):
-        status = {'tasks':job[JOB_TASKS], 'queues':[]}
-        t = time.time()
+        self._get_job_state(job_id)
+    def _get_job_state(self, job_id):
+        status = {'tasks':job[JOB_TASKS], 
+                  'projects':job[JOB_PROJECTS],
+                  'queues':[]}
+        now = time.time()
         for queue_id in job[JOB_QUEUES]:
             checkout_time = self.queues[queue_id][job_id]
             if checkout_time != 0:
-                checkout = time.time() - checkout_time
-            status['queues'].append((queue_id, checkout))
+                checkout_time = now - checkout_time
+            status['queues'].append((queue_id, checkout_time))
         return status
 
     @serialise
-    def status_task(self, task_id):
+    def get_task_state(self, task_id):
         """return the status of a task"""
         status = {}
-        for job_id in self.tasks[task_id]:
-            status[job_id] = self._status_job(job_id)
+        task = self.tasks[task_id]
+        for job_id in task[TASK_JOBS]:
+            status[job_id] = self._get_job_state(job_id)
         return status
 
     @serialise
-    def add(self, job_id, task_id, queue_id, data):
-        """store a job into a queue"""
+    def get_project_state(self, project_id):
+        """return the status of a project"""
+        status = {}
+        project = self.project[project_id]
+        for job_id in project[PROJECT_JOBS]:
+            status[job_id] = self._get_job_state(job_id)
+        return status
+
+    @serialise
+    def add(self, projects, job_id, queue_id, data):
+        """store a job into a queue
+        
+        kwargs:
+           projects - {project_id:[task_id,...],...}
+           job_id 
+           queue_id
+           data         
+        """
         #store our job 
         job = self.jobs.get(job_id, None)
         if job is None:
-            job = (data, set(), set())
+            job = (data, set(), set(), set())
             self.jobs[job_id] = job
         else:
             if data != job[JOB_DATA]:
                 msg = "old job entry and new data != old data (%s)" % (job_id)
                 raise ValueError(msg)
-
-        #update the job with a record of it existing in this task and queue
-        job[JOB_TASKS].add(task_id)
+        
+        # update the job's queue record 
         job[JOB_QUEUES].add(queue_id)
 
         #add this job to the queue
@@ -149,14 +194,34 @@ class Work:
         #if the job is not in the queue, add it and initialise the checkout time
         if job_id not in queue:
             queue[job_id] = 0
-       
-        #add this job to the specified task
-        task = self.tasks.get(task_id, None)
-        if task is None:
-            task = set()
-            self.tasks[task_id] = task
-        task.add(job_id)
-        
+ 
+        # update project and task records 
+        for project_id, task_ids in projects.items():
+
+            # add project to job
+            job[JOB_PROJECTS].add(project_id)
+            
+            # add job to this project
+            project = self.projects.get(project_id, None)
+            if project is None:
+                project = (set(), set())
+                self.projects[project_id] = project
+            project[PROJECT_JOBS].add(job_id)
+
+            for task_id in task_ids:
+                # add task to project and job
+                project[PROJECT_TASKS].add(task_id)
+                job[JOB_TASKS].add(task_id)
+                
+                # add job and project to this task 
+                task = self.tasks.get(task_id, None)
+                if task is None:
+                    task = (set(), set())
+                    self.tasks[task_id] = task
+                task[TASK_JOBS].add(job_id)
+                task[TASK_PROJECTS].add(project_id)
+
+
     @serialise
     def pull(self, count):
         """pull out a max of count jobs"""
@@ -198,8 +263,10 @@ class Work:
         queue_status = {}
         for key in self.queues:
             queue_status[key] = len(self.queues[key])
-        return dict(total_jobs = len(self.jobs),
+        return dict(
+             total_jobs = len(self.jobs),
              total_tasks = len(self.tasks),
+             total_projects = len(self.projects),
              queues = queue_status)
 
     @serialise
@@ -237,24 +304,24 @@ class Work:
 
 
 _realms = dict()
-def get(realm):
-    work = _realms.get(realm, None)
-    if work is None:
-        work = Work(realm)
-        _realms[realm] = work
-    return work
+def get(realm_id):
+    realm = _realms.get(realm_id, None)
+    if realm is None:
+        realm = Realm(realm_id)
+        _realms[realm_id] = realm
+    return realm
 
 
 for filename in os.listdir(CONFIG_ROOT):  
-    name, ext = os.path.splitext(filename)
+    realm_id, ext = os.path.splitext(filename)
     if ext == '.realm':
-        get(name)
+        get(realm_id)
 
 
 def get_status():
     status = {}
-    for realm, work in _realms.iteritems():
-        status[realm] = work.status
+    for realm_id, realm in _realms.iteritems():
+        status[realm_id] = realm.status
     return status
 
 

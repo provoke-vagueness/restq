@@ -10,23 +10,40 @@ from bottle import request
 import realms 
 
 
-# Remove a job from a queue 
-@bottle.delete('/<realm>/job/<job_id>')
-def job_delete(realm, job_id):
-    work = realms.get(realm)
+@bottle.delete('/<realm_id>/job/<job_id>')
+def remove_job(realm_id, job_id):
+    """Remove a job from a realm"""
+    realm = realms.get(realm_id)
     try:
-        work.remove_job(job_id)
+        realm.remove_job(job_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
 
+@bottle.delete('/<realm_id>/task/<task_id>')
+def remove_task(realm_id, task_id):
+    """Remove a task from a realm"""
+    realm = realms.get(realm_id)
+    try:
+        realm.remove_task(task_id)
+    except:
+        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
 
-# Put a job into a queue
-@bottle.put('/<realm>/job/<job_id>')
-def job_add(realm, job_id):
-    """
-    Required fields:
-        task_id - input type='text' - defines which task the job belongs to
-        queue_id - input type='int' - defines which queue_id the job belongs 
+@bottle.delete('/<realm_id>/project/<project_id>')
+def remove_project(realm_id, job_id):
+    """Remove a project from a realm"""
+    realm = realms.get(realm_id)
+    try:
+        realm.remove_project(project_id)
+    except:
+        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+
+@bottle.put('/<realm_id>/job/<job_id>')
+def add(realm_id, job_id):
+    """Put a job into a queue
+    JSON requires:  
+        projects   - {project_id:[task_id,...],...}
+        project    - (project_id, task_id)
+        queue_id   -  
     Optional fields:
         data - input type='file' - data returned on GET job request
              - Max size data is JOB_DATA_MAX_SIZE
@@ -35,14 +52,15 @@ def job_add(realm, job_id):
     try:
         body = json.loads(request.body.read(4096))
         try:
-            task_id = body['task_id']
+            projects = body.get('projects', {})
+            if 'project' in body:
+                project_id, task_id = body['project']
+                projects[project_id] = [task_id,]
             queue_id = body['queue_id']
             data = body['data']
-
-            work = realms.get(realm)
-
+            realm = realms.get(realm_id)
             try:
-                work.add(job_id, task_id, queue_id, data)
+                realm.add(project, job_id, queue_id, data)
             except:
                 bottle.abort(\
                     httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
@@ -51,65 +69,74 @@ def job_add(realm, job_id):
     except ValueError:
         bottle.abort(httplib.BAD_REQUEST, 'Require json object in request body')
 
-
-# Put a job into a queue
-@bottle.get('/<realm>/job/<job_id>')
-def job_status(realm, job_id):
-    work = realms.get(realm)
+@bottle.get('/<realm_id>/job/<job_id>')
+def get_job_state(realm_id, job_id):
+    """Get the status of a job"""
+    realm = realms.get(realm_id)
     try:
-        status = work.status_job(job_id)
+        status = realm.get_job_state(job_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status
 
+@bottle.get('/<realm_id>/task/<task_id>')
+def get_task_state(realm_id, task_id):
+    """Get the status of a task"""
+    realm = realms.get(realm_id)
+    try:
+        status = realm.get_task_state(task_id)
+    except:
+        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+    return status
 
-# Get the next job
-@bottle.get('/<realm>/job')
-def job_pull(realm):
-    work = realms.get(realm)
+@bottle.get('/<realm_id>/project/<project_id>')
+def get_project_state(realm_id, project_id):
+    """Get the status of a project"""
+    realm = realms.get(realm_id)
+    try:
+        status = realm.get_project_state(task_id)
+    except:
+        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+    return status
+
+@bottle.get('/<realm_id>/job')
+def pull(realm_id):
+    """pull the next set of jobs from the realm"""
+    realm = realms.get(realm_id)
     try:
         count = request.GET.get('count', default=1, type=int)
-        job = work.pull(count=count)
+        job = realm.pull(count=count)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return job
 
-
-# Delete the task
-@bottle.delete('/<realm>/task/<task_id>')
-def task_delete(realm, task_id):
-    work = realms.get(realm)
-    try:
-        work.remove_task(task_id)
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-
-
-# Get the status of the task 
-@bottle.get('/<realm>/task/<task_id>')
-def task_status(realm, task_id):
-    work = realms.get(realm)
-    try:
-        status = work.status_task(task_id)
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-    return status 
-
-
 # Get the status of the realm
-@bottle.get('/<realm>/status')
-def realm_status(realm):
-    work = realms.get(realm)
+@bottle.get('/<realm_id>/status')
+def get_realm_status(realm_id):
+    """return the status of a realm"""
+    realm = realms.get(realm_id)
     try:
-        status = work.status
+        status = realm.status
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status
 
+@bottle.post('/<realm_id>/config')
+def update_realm_config(realm_id):
+    """update the configuration of a realm"""
+    realm = realms.get(realm_id)
+    try:
+        body = json.loads(request.body.read(4096))
+        lease_time = body.get('lease_time', None)
+        if lease_time is not None:
+            realm.set_lease_time(lease_time)
+    except ValueError:
+        bottle.abort(httplib.BAD_REQUEST, 'Require JSON in request body')
 
 # Get the status from all of the realms
 @bottle.get('/')
 def realms_status():
+    """return all of the realms and their statuses""" 
     return realms.get_status()
 
 
@@ -132,24 +159,34 @@ options
     --server=
         choose the server adapter to use.
 
+    --debug
+        run in debug mode
+
+    --quiet 
+        run in quite mode
 """
 
 def main(args):
     try:
         opts, args = getopt(args, 'h',['help',
-            'server=',
+            'server=', 'debug', 'quiet',
             ])
     except Exception as exc:
         print("Getopt error: %s" % (exc), file=sys.stderr)
         return -1
 
-    bottle_run_kwargs = dict(app=app)
+    bottle_run_kwargs = dict(app=app, debug=False)
     for opt, arg in opts:
         if opt in ['-h', '--help']:
             print(__help__)
             return 0
-        if opt in ['--server']:
+        elif opt in ['--server']:
             bottle_run_kwargs['server'] = arg
+        elif opt in ['--quiet']:
+            bottle_run_kwargs['quite'] = True
+        elif opt in ['--debug']:
+            bottle_run_kwargs['debug'] = True
+
     if args:
         try:
             host, port = args[0].split(':')
