@@ -71,6 +71,7 @@ class Realm:
         self.queues = {}
         self.queue_iter = {}
         self.queue_lease_time = {}
+        self.default_lease_time = DEFAULT_LEASE_TIME
         self.projects = {}
         self.tasks = {}
         self.jobs = {}
@@ -164,14 +165,16 @@ class Realm:
         return status
 
     @serialise
-    def add(self, projects, job_id, queue_id, data):
+    def add(self, job_id, queue_id, data, project_id=None, task_id=None):
         """store a job into a queue
         
         kwargs:
-           projects - {project_id:[task_id,...],...}
            job_id 
            queue_id
-           data         
+           data
+        optional :
+           project_id
+           task_id
         """
         #store our job 
         job = self.jobs.get(job_id, None)
@@ -190,37 +193,39 @@ class Realm:
         queue = self.queues.get(queue_id, None)
         if queue is None:
             #create a new queue
-            queue = self._create_queue(queue_id, DEFAULT_LEASE_TIME)
+            queue = self._create_queue(queue_id, self.default_lease_time)
             self._save_config()
         
         #if the job is not in the queue, add it and initialise the checkout time
         if job_id not in queue:
             queue[job_id] = 0
  
-        # update project and task records 
-        for project_id, task_ids in projects.items():
-
+        if project_id is not None:
             # add project to job
             job[JOB_PROJECTS].add(project_id)
             
-            # add job to this project
+            # add job and task to this project
             project = self.projects.get(project_id, None)
             if project is None:
                 project = (set(), set())
                 self.projects[project_id] = project
             project[PROJECT_JOBS].add(job_id)
 
-            for task_id in task_ids:
-                # add task to project and job
+            if task_id is not None:
                 project[PROJECT_TASKS].add(task_id)
-                job[JOB_TASKS].add(task_id)
-                
-                # add job and project to this task 
-                task = self.tasks.get(task_id, None)
-                if task is None:
-                    task = (set(), set())
-                    self.tasks[task_id] = task
-                task[TASK_JOBS].add(job_id)
+
+        if task_id is not None:
+            #add task to job
+            job[JOB_TASKS].add(task_id)
+            
+            # add job and project to this task 
+            task = self.tasks.get(task_id, None)
+            if task is None:
+                task = (set(), set())
+                self.tasks[task_id] = task
+            task[TASK_JOBS].add(job_id)
+
+            if project_id is not None:
                 task[TASK_PROJECTS].add(project_id)
 
 
@@ -273,8 +278,16 @@ class Realm:
              queues = queue_status)
 
     @serialise
-    def set_lease_time(self, queue_id, lease_time):
+    def set_queue_lease_time(self, queue_id, lease_time):
         """set the lease time for the given queue_id"""
+        self._set_queue_lease_time(queue_id, lease_time)
+
+    @serialise 
+    def set_default_lease_time(self, lease_time):
+        self.default_lease_time = lease_time 
+        self._save_config()
+
+    def _set_queue_lease_time(self, queue_id, lease_time):
         queue = self.queues.get(queue_id, None)
         if queue is None:
             self._create_queue(queue_id, lease_time)
@@ -288,11 +301,14 @@ class Realm:
             return
         with open(self.config_path, 'rb') as f:
             config = json.loads(f.read())
+        self.default_lease_time = config.get('default_lease_time',
+                DEFAULT_LEASE_TIME)
         for queue_id, lease_time in config['queues']:
             self._create_queue(queue_id, lease_time)
 
     def _save_config(self):
-        config = dict(queues=[])
+        config = dict(queues=[],
+                      default_lease_time=self.default_lease_time)
         for queue_id in self.queues:
             config['queues'].append((queue_id, self.queue_lease_time[queue_id]))
         with open(self.config_path, 'wb') as f:
