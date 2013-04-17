@@ -130,10 +130,12 @@ class Realm:
     @serialise 
     def get_job_state(self, job_id):
         """return the status of a job"""
-        self._get_job_state(job_id)
+        return self._get_job_state(job_id)
     def _get_job_state(self, job_id):
+        job = self.jobs[job_id]
         status = {'tasks':job[JOB_TASKS], 
                   'projects':job[JOB_PROJECTS],
+                  'data':job[JOB_DATA],
                   'queues':[]}
         now = time.time()
         for queue_id in job[JOB_QUEUES]:
@@ -156,7 +158,7 @@ class Realm:
     def get_project_state(self, project_id):
         """return the status of a project"""
         status = {}
-        project = self.project[project_id]
+        project = self.projects[project_id]
         for job_id in project[PROJECT_JOBS]:
             status[job_id] = self._get_job_state(job_id)
         return status
@@ -227,8 +229,8 @@ class Realm:
         """pull out a max of count jobs"""
         queues_ids = self.queues.keys()
         queues_ids.sort()
-        jobs = {}
-        for queue_id in self.queues:
+        jobs = [] 
+        for queue_id in queues_ids:
             #skip queues that have no jobs
             if not self.queues[queue_id]:
                 continue 
@@ -244,7 +246,8 @@ class Realm:
                 ctime = time.time()
                 if ctime - dequeue_time > self.queue_lease_time[queue_id]:
                     self.queues[queue_id][job_id] = ctime
-                    jobs[job_id] = self.jobs[job_id][JOB_DATA]
+                    jobs.append((job_id, 
+                                 (queue_id, self.jobs[job_id][JOB_DATA])))
                     if len(jobs) >= count:
                         return jobs
                 else:
