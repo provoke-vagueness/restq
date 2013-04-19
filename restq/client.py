@@ -15,24 +15,16 @@ class Realm(object):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
         self.requester.delete(url)
 
-    def remove_task(self, task_id):
-        url = "%s%s/task/%s" % (self._url, self._realm, task_id)
-        self.requester.delete(url)
-
-    def remove_project(self, project_id):
-        url = "%s%s/project/%s" % (self._url, self._realm, project_id)
+    def remove_tagged_jobs(self, tag_id):
+        url = "%s%s/tag/%s" % (self._url, self._realm, tag_id)
         self.requester.delete(url)
 
     def get_job_state(self, job_id):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
         return self.requester.get(url)
 
-    def get_task_state(self, task_id):
-        url = "%s%s/task/%s" % (self._url, self._realm, task_id)
-        return self.requester.get(url)
-
-    def get_project_state(self, project_id):
-        url = "%s%s/project/%s" % (self._url, self._realm, project_id)
+    def get_tagged_jobs(self, tag_id):
+        url = "%s%s/tag/%s" % (self._url, self._realm, tag_id)
         return self.requester.get(url)
 
     def set_default_lease_time(self, lease_time):
@@ -45,18 +37,15 @@ class Realm(object):
         data = {'queue_lease_time':[queue_id, lease_time]}
         self.requester.post(url, data=json.dumps(data))
 
-    def add(self, job_id, queue_id, data, project_id=None, task_id=None):
+    def add(self, job_id, queue_id, data, tags=None):
         """
 
         """
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
-        data = {'task_id':task_id,
-                'queue_id':queue_id,
+        data = {'queue_id':queue_id,
                 'data':data}
-        if project_id is not None:
-            data['project_id'] = project_id
-        if task_id is not None:
-            data['task_id'] = task_id
+        if tags is not None:
+            data['tags'] = tags
         data = json.dumps(data)
         self.requester.put(url, data=data)
 
