@@ -126,9 +126,24 @@ def update_realm_config(realm_id):
     realm = realms.get(realm_id)
     try:
         body = json.loads(request.body.read(4096))
-        lease_time = body.get('lease_time', None)
+
+        lease_time = body.get('default_lease_time', None)
         if lease_time is not None:
-            realm.set_lease_time(lease_time)
+            if type(lease_time) not in (long, int):
+                bottle.abbort(httplib.BAD_REQUEST, "default_lease_time not int")
+            realm.set_default_lease_time(lease_time)
+        
+        queue_lease_time = queue_lease_time = body.get('queue_lease_time', None)
+        if queue_lease_time is not None:
+            try:
+                queue_id, lease_time = queue_lease_time 
+            except (ValueError, TypeError) as err:
+                bottle.abort(httplib.BAD_REQUEST, 
+                                'queue_lease_time err - %s' % err)
+            if type(lease_time) not in (long, int):
+                bottle.abbort(httplib.BAD_REQUEST, "default_lease_time not int")
+            realm.set_queue_lease_time(queue_id, lease_time)
+
     except ValueError:
         bottle.abort(httplib.BAD_REQUEST, 'Require JSON in request body')
 
