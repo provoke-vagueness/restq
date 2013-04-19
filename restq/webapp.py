@@ -19,21 +19,12 @@ def remove_job(realm_id, job_id):
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
 
-@bottle.delete('/<realm_id>/task/<task_id>')
-def remove_task(realm_id, task_id):
-    """Remove a task from a realm"""
+@bottle.delete('/<realm_id>/tag/<tag_id>')
+def remove_tagged_jobs(realm_id, tag_id):
+    """Remove a tag and all of its jobs from a realm"""
     realm = realms.get(realm_id)
     try:
-        realm.remove_task(task_id)
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-
-@bottle.delete('/<realm_id>/project/<project_id>')
-def remove_project(realm_id, project_id):
-    """Remove a project from a realm"""
-    realm = realms.get(realm_id)
-    try:
-        realm.remove_project(project_id)
+        realm.remove_tagged_jobs(tag_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
 
@@ -41,8 +32,6 @@ def remove_project(realm_id, project_id):
 def add(realm_id, job_id):
     """Put a job into a queue
     JSON requires:  
-        projects   - {project_id:[task_id,...],...}
-        project    - (project_id, task_id)
         queue_id   -  
     Optional fields:
         data - input type='file' - data returned on GET job request
@@ -52,19 +41,18 @@ def add(realm_id, job_id):
     try:
         body = json.loads(request.body.read(4096))
         try:
-            project_id = body.get('project_id', None)
-            task_id = body.get('task_id', None)
+            tags = body.get('tags', [])
             queue_id = body['queue_id']
             data = body['data']
             realm = realms.get(realm_id)
             try:
                 realm.add(job_id, queue_id, data, project_id=project_id,
-                                    task_id=task_id)
+                        tags=tags)
             except:
                 bottle.abort(\
                     httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
         except KeyError:
-            bottle.abort(httplib.BAD_REQUEST, 'Require task_id queue_id & data')
+            bottle.abort(httplib.BAD_REQUEST, 'Require queue_id & data')
     except ValueError:
         bottle.abort(httplib.BAD_REQUEST, 'Require json object in request body')
 
@@ -78,22 +66,12 @@ def get_job_state(realm_id, job_id):
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status
 
-@bottle.get('/<realm_id>/task/<task_id>')
-def get_task_state(realm_id, task_id):
-    """Get the status of a task"""
+@bottle.get('/<realm_id>/tag/<tag_id>')
+def get_tagged_jobs(realm_id, tag_id):
+    """return a dict of all jobs tagged by tag_id"""
     realm = realms.get(realm_id)
     try:
-        status = realm.get_task_state(task_id)
-    except:
-        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-    return status
-
-@bottle.get('/<realm_id>/project/<project_id>')
-def get_project_state(realm_id, project_id):
-    """Get the status of a project"""
-    realm = realms.get(realm_id)
-    try:
-        status = realm.get_project_state(project_id)
+        status = realm.get_tagged_jobs(tag_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status
