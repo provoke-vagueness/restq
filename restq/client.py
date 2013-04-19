@@ -3,7 +3,8 @@ import requests
 
 
 class Realm(object):
-    def __init__(self, realm, url):
+    def __init__(self, realm, url, requester=requests):
+        self.requester = requester
         self._realm = realm
         self._url = url
 
@@ -12,33 +13,37 @@ class Realm(object):
 
     def remove_job(self, job_id):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
-        requests.delete(url)
+        self.requester.delete(url)
 
     def remove_task(self, task_id):
         url = "%s%s/task/%s" % (self._url, self._realm, task_id)
-        requests.delete(url)
+        self.requester.delete(url)
 
     def remove_project(self, project_id):
         url = "%s%s/project/%s" % (self._url, self._realm, project_id)
-        requests.delete(url)
+        self.requester.delete(url)
 
     def get_job_state(self, job_id):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
-        return requests.get(url)
+        return self.requester.get(url)
 
     def get_task_state(self, task_id):
         url = "%s%s/task/%s" % (self._url, self._realm, task_id)
-        return requests.get(url)
+        return self.requester.get(url)
 
     def get_project_state(self, project_id):
         url = "%s%s/project/%s" % (self._url, self._realm, project_id)
-        return requests.get(url)
+        return self.requester.get(url)
 
     def set_default_lease_time(self, lease_time):
-        pass #TODO
+        url = "%s%s/config" % (self._url, self._realm)
+        data = {'default_lease_time':lease_time}
+        self.requester.post(url, data=json.dumps(data))
 
     def set_queue_lease_time(self, queue_id, lease_time):
-        pass #TODO
+        url = "%s%s/config" % (self._url, self._realm)
+        data = {'queue_lease_time':[queue_id, lease_time]}
+        self.requester.post(url, data=json.dumps(data))
 
     def add(self, job_id, queue_id, data, project_id=None, task_id=None):
         """
@@ -53,22 +58,24 @@ class Realm(object):
         if task_id is not None:
             data['task_id'] = task_id
         data = json.dumps(data)
-        requests.put(url, data=data)
+        self.requester.put(url, data=data)
 
     def pull(self, count=5):
         url = "%s%s/job?count=%s" % (self._url, self._realm, count)
-        return requests.get(url).json()
+        return self.requester.get(url).json()
    
     @property
     def status(self):
         url = "%s%s/status" % (self._url, self._realm)
-        return requests.get(url).json()
+        return self.requester.get(url).json()
 
 
 class Realms(object):
-    def __init__(self, url='http://localhost:8080/'):
+    def __init__(self, url='http://localhost:8080/',
+                       requester=requests):
         if not url.endswith('/'):
             url += '/'
+        self.requester = requester
         self._url = url
         self._special = set(['realms', 'keys', 'items', 'values', 'get', 
                             'trait_names'])
@@ -76,11 +83,12 @@ class Realms(object):
 
     @property
     def realms(self):
-        realms = requests.get(self._url).json()
+        realms = self.requester.get(self._url).json()
         for k in realms:
             realm = self.__dict__.get(k, None)
             if realm is None:
-                self.__dict__[k] = Realm(k, self._url)
+                self.__dict__[k] = Realm(k, self._url, 
+                                         requester=self.requester)
             realms[k] = realm
         return realms
 
@@ -96,11 +104,11 @@ class Realms(object):
     def __iter__(self):
         return self.realms.__iter__() 
 
-    def __contains__(self, k):
-        return k in sel.realms
+    def __contains__(self, name):
+        return name in sel.realms
 
-    def get(self, k):
-        return self.__getattribute__(k)
+    def get(self, name):
+        return self.__getattribute__(name)
 
     def __str__(self):
         status = {}
@@ -113,8 +121,7 @@ class Realms(object):
             return object.__getattribute__(self, k)
         realm = self.__dict__.get(k, None)
         if realm is None:
-            realm = Realm(k, self._url)
+            realm = Realm(k, self._url, requester=self.requester)
             self.__dict__[k] = realm
         return realm
-
 
