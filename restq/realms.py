@@ -134,8 +134,8 @@ class Realm:
         return self._get_job_state(job_id)
     def _get_job_state(self, job_id):
         job = self.jobs[job_id]
-        status = {'tasks':job[JOB_TASKS], 
-                  'projects':job[JOB_PROJECTS],
+        status = {'tasks':list(job[JOB_TASKS]), 
+                  'projects':list(job[JOB_PROJECTS]),
                   'data':job[JOB_DATA],
                   'queues':[]}
         now = time.time()
@@ -234,7 +234,7 @@ class Realm:
         """pull out a max of count jobs"""
         queues_ids = self.queues.keys()
         queues_ids.sort()
-        jobs = [] 
+        jobs = {} 
         for queue_id in queues_ids:
             #skip queues that have no jobs
             if not self.queues[queue_id]:
@@ -251,8 +251,7 @@ class Realm:
                 ctime = time.time()
                 if ctime - dequeue_time > self.queue_lease_time[queue_id]:
                     self.queues[queue_id][job_id] = ctime
-                    jobs.append((job_id, 
-                                 (queue_id, self.jobs[job_id][JOB_DATA])))
+                    jobs[job_id] = (queue_id, self.jobs[job_id][JOB_DATA])
                     if len(jobs) >= count:
                         return jobs
                 else:
