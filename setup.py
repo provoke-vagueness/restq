@@ -37,7 +37,8 @@ setup(
     install_requires = install_requires,
     entry_points={
         'console_scripts': [
-            'resq-webapp = restq.webapp:entry'
+            'restq = restq.cli:entry',
+            'restq-webapp = restq.webapp:entry'
             ]
     },
     platforms=['cygwin', 'win', 'linux'],
