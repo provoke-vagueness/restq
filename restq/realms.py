@@ -4,6 +4,7 @@ from collections import OrderedDict
 from threading import Lock
 from functools import wraps
 import os
+import pprint
 
 
 # The number of seconds a job can be leased for before it can be handed out to
@@ -56,14 +57,10 @@ def serialise(func):
 
 
 JOB_DATA = 0
-JOB_PROJECTS = 1
-JOB_TASKS = 2
-JOB_QUEUES = 3
-TASK_JOBS = 0
-TASK_PROJECTS = 1
-PROJECT_JOBS = 0
-PROJECT_TASKS = 1
-
+JOB_TAGS = 1
+JOB_QUEUES = 2
+TAG_JOBS = 0
+TAG_RELTAGS = 1
 
 class Realm:
     def __init__(self, realm):
@@ -72,17 +69,26 @@ class Realm:
         self.queue_iter = {}
         self.queue_lease_time = {}
         self.default_lease_time = DEFAULT_LEASE_TIME
-        self.projects = {}
-        self.tasks = {}
+        self.tags = {}
         self.jobs = {}
         self.lock = Lock()
         self.config_path = os.path.join(CONFIG_ROOT, realm + ".realm")
         self._load_config()
-
+   
     @serialise
     def remove_job(self, job_id):
         """remove job_id from the system"""
         self._remove_job(job_id)
+
+    def _purge_tag(self, tag_id):
+        # recursively purge tags to avoid leaving tags with no jobs
+        tag = self.tags.pop(tag_id)
+        for reltag_id in tag[TAG_RELTAGS]:
+            reltag = self.tags[reltag_id]
+            reltag[TAG_RELTAGS].remove(tag_id)
+            if not reltag[TAG_JOBS]:
+                self._purge_tag(reltag_id)
+ 
     def _remove_job(self, job_id):
         # remove the job
         job = self.jobs.pop(job_id)
@@ -92,40 +98,18 @@ class Realm:
             queue = self.queues[queue_id]
             queue.pop(job_id)
 
-        # remove from tasks
-        empty_tasks = []
-        for task_id in job[JOB_TASKS]:
-            task = self.tasks[task_id]
-            task[TASK_JOBS].remove(job_id)
-            # if there are no more jobs in task, remove it
-            if not task[TASK_JOBS]:
-                self.tasks.pop(task_id)
-                for project_id in task[TASK_PROJECTS]:
-                    self.projects[project_id][PROJECT_TASKS].remove(task_id)
-
-        # remove from projects 
-        empty_projects = []
-        for project_id in job[JOB_PROJECTS]:
-            project = self.projects[project_id]
-            project[PROJECT_JOBS].remove(job_id)
-            # if there are no more jobs in project, remove it
-            if not project[TASK_JOBS]:
-                self.projects.pop(project_id)
-                for task_id in project[PROJECT_TASKS]:
-                    self.tasks[task_id][PROJECT_TASKS].remove(project_id)
+        # remove from tags
+        for tag_id in job[JOB_TAGS]:
+            tag = self.tags[tag_id]
+            tag[TAG_JOBS].remove(job_id)
+            if not tag[TAG_JOBS]:
+                self._purge_tag(tag_id)
 
     @serialise
-    def remove_task(self, task_id):
-        """remove a task and all of its jobs from the system"""
-        task = self.tasks[task_id]
-        for job_id in [i for i in task[TASK_JOBS]]:
-            self._remove_job(job_id)
-
-    @serialise 
-    def remove_project(self, project_id):
-        """remove a task and all of its jobs from the system"""
-        project = self.projects[project_id]
-        for job_id in [i for i in project[PROJECT_JOBS]]:
+    def remove_tagged_jobs(self, tag_id):
+        """remove all jobs related to this tag_id"""
+        tag = self.tags[tag_id]
+        for job_id in [i for i in tag[TAG_JOBS]]:
             self._remove_job(job_id)
 
     @serialise 
@@ -134,8 +118,7 @@ class Realm:
         return self._get_job_state(job_id)
     def _get_job_state(self, job_id):
         job = self.jobs[job_id]
-        status = {'tasks':list(job[JOB_TASKS]), 
-                  'projects':list(job[JOB_PROJECTS]),
+        status = {'tags':list(job[JOB_TAGS]), 
                   'data':job[JOB_DATA],
                   'queues':[]}
         now = time.time()
@@ -147,25 +130,16 @@ class Realm:
         return status
 
     @serialise
-    def get_task_state(self, task_id):
-        """return the status of a task"""
+    def get_tagged_jobs(self, tag_id):
+        """return a dict of all jobs tagged by tag_id"""
         status = {}
-        task = self.tasks[task_id]
-        for job_id in task[TASK_JOBS]:
+        tag = self.tags[tag_id]
+        for job_id in tag[TAG_JOBS]:
             status[job_id] = self._get_job_state(job_id)
         return status
 
     @serialise
-    def get_project_state(self, project_id):
-        """return the status of a project"""
-        status = {}
-        project = self.projects[project_id]
-        for job_id in project[PROJECT_JOBS]:
-            status[job_id] = self._get_job_state(job_id)
-        return status
-
-    @serialise
-    def add(self, job_id, queue_id, data, project_id=None, task_id=None):
+    def add(self, job_id, queue_id, data, tags=[]):
         """store a job into a queue
         
         kwargs:
@@ -179,7 +153,7 @@ class Realm:
         #store our job 
         job = self.jobs.get(job_id, None)
         if job is None:
-            job = (data, set(), set(), set())
+            job = (data, set(), set())
             self.jobs[job_id] = job
         else:
             if data != job[JOB_DATA]:
@@ -189,45 +163,32 @@ class Realm:
         # update the job's queue record 
         job[JOB_QUEUES].add(queue_id)
 
-        #add this job to the queue
+        # add this job to the queue
         queue = self.queues.get(queue_id, None)
         if queue is None:
             #create a new queue
             queue = self._create_queue(queue_id, self.default_lease_time)
             self._save_config()
         
-        #if the job is not in the queue, add it and initialise the checkout time
+        # if the job is not in the queue, add it and init the checkout time
         if job_id not in queue:
             queue[job_id] = 0
  
-        if project_id is not None:
-            # add project to job
-            job[JOB_PROJECTS].add(project_id)
-            
-            # add job and task to this project
-            project = self.projects.get(project_id, None)
-            if project is None:
-                project = (set(), set())
-                self.projects[project_id] = project
-            project[PROJECT_JOBS].add(job_id)
+        # add tags to jobs and job to tags
+        for tag_id in tags:
+            job[JOB_TAGS].add(tag_id)
+            tag = self.tags.get(tag_id, None)
+            if tag is None:
+                tag = (set(), set())
+                self.tags[tag_id] = tag
+            tag[TAG_JOBS].add(job_id)
 
-            if task_id is not None:
-                project[PROJECT_TASKS].add(task_id)
-
-        if task_id is not None:
-            #add task to job
-            job[JOB_TASKS].add(task_id)
-            
-            # add job and project to this task 
-            task = self.tasks.get(task_id, None)
-            if task is None:
-                task = (set(), set())
-                self.tasks[task_id] = task
-            task[TASK_JOBS].add(job_id)
-
-            if project_id is not None:
-                task[TASK_PROJECTS].add(project_id)
-
+        # join related tags
+        for tag_id in tags:
+            for reltag_id in tags:
+                if reltag_id == tag_id:
+                    continue
+                self.tags[tag_id][TAG_RELTAGS].add(reltag_id)
 
     @serialise
     def pull(self, count):
@@ -272,8 +233,7 @@ class Realm:
             queue_status[key] = len(self.queues[key])
         return dict(
              total_jobs = len(self.jobs),
-             total_tasks = len(self.tasks),
-             total_projects = len(self.projects),
+             total_tags = len(self.tags),
              queues = queue_status)
 
     @serialise
