@@ -60,17 +60,27 @@ def get_job(realm_id, job_id):
     """Get the status of a job"""
     realm = realms.get(realm_id)
     try:
-        status = realm.get_job(job_id)
+        job = realm.get_job(job_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
-    return status
+    return job
 
 @bottle.get('/<realm_id>/tag/<tag_id>')
 def get_tagged_jobs(realm_id, tag_id):
     """return a dict of all jobs tagged by tag_id"""
     realm = realms.get(realm_id)
     try:
-        status = realm.get_tagged_jobs(tag_id)
+        jobs = realm.get_tagged_jobs(tag_id)
+    except:
+        bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
+    return jobs
+
+@bottle.get('/<realm_id>/tag/<tag_id>/status')
+def get_tag_status(realm_id, tag_id):
+    """return an int of the number of jobs related to tag_id"""
+    realm = realms.get(realm_id)
+    try:
+        status = realm.get_tag_status(tag_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status
