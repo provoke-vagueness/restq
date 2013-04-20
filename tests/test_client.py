@@ -54,10 +54,10 @@ class Requester():
 
 
 
-class TestClient(test_realms.TestJobs):
+class TestClient(test_realms.TestRealms):
 
     def setUp(self):
-        test_realms.TestJobs.setUp(self)
+        test_realms.TestRealms.setUp(self)
         requester = Requester()
         self.realms = client.Realms(url='', requester=requester)
     
