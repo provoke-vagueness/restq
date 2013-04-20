@@ -34,6 +34,7 @@ or `PyPi`_::
     > python -m restq -h
 
 Example::
+
     > nohup restq-webapp &
     > ipython
     # import the client 
