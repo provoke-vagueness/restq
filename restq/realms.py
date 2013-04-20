@@ -121,8 +121,6 @@ class Realm:
     @serialise
     def get_tagged_jobs(self, tag_id):
         """return a dict of all jobs tagged by tag_id"""
-        self._get_tagged_jobs(tag_id)
-    def _get_tagged_jobs(self, tag_id):
         jobs = {}
         tag = self.tags[tag_id]
         for job_id in tag:
@@ -219,6 +217,14 @@ class Realm:
              total_jobs = len(self.jobs),
              total_tags = len(self.tags),
              queues = queue_status)
+
+    def get_tag_status(self, tag_id):
+        """ return the count of jobs tagged by tag_id """
+        tag = self.tags.get(tag_id, None)
+        if tag is None:
+            return {'len':None}
+        else:
+            return {'len':len(tag)}
 
     @serialise
     def set_queue_lease_time(self, queue_id, lease_time):
