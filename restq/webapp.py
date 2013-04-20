@@ -46,8 +46,7 @@ def add(realm_id, job_id):
             data = body['data']
             realm = realms.get(realm_id)
             try:
-                realm.add(job_id, queue_id, data, project_id=project_id,
-                        tags=tags)
+                realm.add(job_id, queue_id, data, tags=tags)
             except:
                 bottle.abort(\
                     httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
@@ -57,11 +56,11 @@ def add(realm_id, job_id):
         bottle.abort(httplib.BAD_REQUEST, 'Require json object in request body')
 
 @bottle.get('/<realm_id>/job/<job_id>')
-def get_job_state(realm_id, job_id):
+def get_job(realm_id, job_id):
     """Get the status of a job"""
     realm = realms.get(realm_id)
     try:
-        status = realm.get_job_state(job_id)
+        status = realm.get_job(job_id)
     except:
         bottle.abort(httplib.INTERNAL_SERVER_ERROR, traceback.format_exc())
     return status

@@ -19,7 +19,7 @@ class Realm(object):
         url = "%s%s/tag/%s" % (self._url, self._realm, tag_id)
         self.requester.delete(url)
 
-    def get_job_state(self, job_id):
+    def get_job(self, job_id):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
         return self.requester.get(url)
 
