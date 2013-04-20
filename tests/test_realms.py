@@ -78,8 +78,6 @@ class TestJobs(TestJobsBase):
         realm.add("job1", 'q0', 'h', tags=['project 1', 'task 1'])
         realm.add("job1", 'q1', 'h', tags=['project 2', 'task 1'])
         realm.add("job2", 'q0', 'h', tags=['project 1', 'task 2'])
-        pprint(realm.jobs)
-        pprint(realm.tags)
 
         realm.remove_tagged_jobs("task 1")
 
@@ -111,7 +109,7 @@ class TestJobs(TestJobsBase):
         realm.add("job1", 'q1', 'h', tags=['project 2', 'task 1'])
         realm.add("job2", 'q0', 'h', tags=['project 1', 'task 2'])
 
-        state = realm.get_job_state("job1")
+        state = realm.get_job("job1")
         state = realm.get_tagged_jobs("task 1")
         state = realm.get_tagged_jobs("project 1")
 
