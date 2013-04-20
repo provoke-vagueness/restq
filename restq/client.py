@@ -53,6 +53,10 @@ class Realm(object):
         url = "%s%s/job?count=%s" % (self._url, self._realm, count)
         return self.requester.get(url).json()
    
+    def get_tag_status(self, tag_id):
+        url = "%s%s/tag/%s/status" % (self._url, self._realm, tag_id)
+        return self.requester.get(url).json()
+
     @property
     def status(self):
         url = "%s%s/status" % (self._url, self._realm)
