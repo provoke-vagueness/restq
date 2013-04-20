@@ -6,7 +6,7 @@ import os
 from restq import realms 
 
 
-class TestJobsBase(unittest.TestCase):
+class TestRealmsBase(unittest.TestCase):
 
     def setUp(self):
         try:
@@ -18,7 +18,9 @@ class TestJobsBase(unittest.TestCase):
             pass
 
 
-class TestJobs(TestJobsBase):
+class TestRealms(TestRealmsBase):
+    """ These test cases are used in both restq.realm testing and the full
+        webapp<->client<->realm test (see test_client)."""
 
     def test_add(self):
         """add data"""
@@ -101,6 +103,9 @@ class TestJobs(TestJobsBase):
         self.assertEqual(status['total_jobs'], 1)
         self.assertEqual(status['total_tags'], 2)
 
+        self.assertEqual(realm.get_tag_status('project 1')['len'], None)
+        self.assertEqual(realm.get_tag_status('project 2')['len'], 1)
+
     def test_get_jobs(self):
         """get the state of a job"""
         realm = self.realms.get('test')
@@ -151,7 +156,9 @@ class TestJobs(TestJobsBase):
         self.assertEqual(realmer["job0"][1], 'h')
 
 
-class TestJobsNonGeneric(TestJobsBase):
+class TestRealmsNonGeneric(TestRealmsBase):
+    """Test the stuff that applies just to realm and not the 
+    full webapp<->client<->realm interaction"""
 
     def test_add_diff_data(self):
         """add diff data errors"""
