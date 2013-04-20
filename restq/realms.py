@@ -59,8 +59,6 @@ def serialise(func):
 JOB_DATA = 0
 JOB_TAGS = 1
 JOB_QUEUES = 2
-TAG_JOBS = 0
-TAG_RELTAGS = 1
 
 class Realm:
     def __init__(self, realm):
@@ -80,15 +78,6 @@ class Realm:
         """remove job_id from the system"""
         self._remove_job(job_id)
 
-    def _purge_tag(self, tag_id):
-        # recursively purge tags to avoid leaving tags with no jobs
-        tag = self.tags.pop(tag_id)
-        for reltag_id in tag[TAG_RELTAGS]:
-            reltag = self.tags[reltag_id]
-            reltag[TAG_RELTAGS].remove(tag_id)
-            if not reltag[TAG_JOBS]:
-                self._purge_tag(reltag_id)
- 
     def _remove_job(self, job_id):
         # remove the job
         job = self.jobs.pop(job_id)
@@ -101,22 +90,22 @@ class Realm:
         # remove from tags
         for tag_id in job[JOB_TAGS]:
             tag = self.tags[tag_id]
-            tag[TAG_JOBS].remove(job_id)
-            if not tag[TAG_JOBS]:
-                self._purge_tag(tag_id)
+            tag.remove(job_id)
+            if not tag:
+                self.tags.pop(tag_id)
 
     @serialise
     def remove_tagged_jobs(self, tag_id):
         """remove all jobs related to this tag_id"""
         tag = self.tags[tag_id]
-        for job_id in [i for i in tag[TAG_JOBS]]:
+        for job_id in [i for i in tag]:
             self._remove_job(job_id)
 
     @serialise 
-    def get_job_state(self, job_id):
+    def get_job(self, job_id):
         """return the status of a job"""
-        return self._get_job_state(job_id)
-    def _get_job_state(self, job_id):
+        return self._get_job(job_id)
+    def _get_job(self, job_id):
         job = self.jobs[job_id]
         status = {'tags':list(job[JOB_TAGS]), 
                   'data':job[JOB_DATA],
@@ -132,11 +121,13 @@ class Realm:
     @serialise
     def get_tagged_jobs(self, tag_id):
         """return a dict of all jobs tagged by tag_id"""
-        status = {}
+        self._get_tagged_jobs(tag_id)
+    def _get_tagged_jobs(self, tag_id):
+        jobs = {}
         tag = self.tags[tag_id]
-        for job_id in tag[TAG_JOBS]:
-            status[job_id] = self._get_job_state(job_id)
-        return status
+        for job_id in tag:
+            jobs[job_id] = self._get_job(job_id)
+        return jobs
 
     @serialise
     def add(self, job_id, queue_id, data, tags=[]):
@@ -179,16 +170,9 @@ class Realm:
             job[JOB_TAGS].add(tag_id)
             tag = self.tags.get(tag_id, None)
             if tag is None:
-                tag = (set(), set())
+                tag = set()
                 self.tags[tag_id] = tag
-            tag[TAG_JOBS].add(job_id)
-
-        # join related tags
-        for tag_id in tags:
-            for reltag_id in tags:
-                if reltag_id == tag_id:
-                    continue
-                self.tags[tag_id][TAG_RELTAGS].add(reltag_id)
+            tag.add(job_id)
 
     @serialise
     def pull(self, count):
