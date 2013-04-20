@@ -222,9 +222,9 @@ class Realm:
         """ return the count of jobs tagged by tag_id """
         tag = self.tags.get(tag_id, None)
         if tag is None:
-            return {'len':None}
+            return {'count':None}
         else:
-            return {'len':len(tag)}
+            return {'count':len(tag)}
 
     @serialise
     def set_queue_lease_time(self, queue_id, lease_time):

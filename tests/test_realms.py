@@ -103,8 +103,8 @@ class TestRealms(TestRealmsBase):
         self.assertEqual(status['total_jobs'], 1)
         self.assertEqual(status['total_tags'], 2)
 
-        self.assertEqual(realm.get_tag_status('project 1')['len'], None)
-        self.assertEqual(realm.get_tag_status('project 2')['len'], 1)
+        self.assertEqual(realm.get_tag_status('project 1')['count'], None)
+        self.assertEqual(realm.get_tag_status('project 2')['count'], 1)
 
     def test_get_jobs(self):
         """get the state of a job"""
