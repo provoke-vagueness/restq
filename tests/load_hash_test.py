@@ -7,9 +7,6 @@ import restq
 
 
 
-
-
-
 def do_test(url='http://localhost:8080'):
     realms = restq.Realms(url=url)
     test = realms.test
@@ -18,8 +15,6 @@ def do_test(url='http://localhost:8080'):
         test.add(job_id, 0)
 
     print(len(test.pull(count=100000)))
-
-
 
 
 
