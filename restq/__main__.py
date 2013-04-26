@@ -1,7 +1,7 @@
 import bottle
 
-import webapp
-import realms 
+from restq import webapp
+from restq import realms 
 
 try:
     # bjoern requires libev-dev to be installed for it to build
