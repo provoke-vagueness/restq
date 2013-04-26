@@ -2,5 +2,5 @@
 #import webapp
 #import realms 
 
-from client import Realms
+from restq.client import Realms
 
