@@ -18,12 +18,6 @@ class TestApi(unittest.TestCase):
     def setUp(self):
         self.app = webtest.TestApp(webapp.app)
 
-    def test_doc(self):
-        resp = self.app.get("/")
-        self.assertEquals(resp.status.lower(), "200 ok")
-        self.assertEquals(resp.status_int, 200)
-        self.assertTrue("<!DOCTYPE html>" in resp)
-
     def test_add_and_pull(self):
         #add 100 jobs to the a test realm and then verify their data
         for i in xrange(0, 100):
@@ -37,7 +31,7 @@ class TestApi(unittest.TestCase):
             self.assertEquals(resp.status_int, 200)
             body = json.loads(resp.body)
             for k,v in body.iteritems():
-                self.assertEquals(int(k), v)
+                self.assertEquals([1, int(k)], v)
 
             #remove the job
             resp = self.app.delete("/realm/job/%d" % i)
@@ -48,7 +42,7 @@ class TestApi(unittest.TestCase):
         self.assertEquals(resp.status_int, 200)
         body = json.loads(resp.body)
         for k,v in body.iteritems():
-            self.assertEquals(int(k), v)
+            self.assertEquals([1,int(k)], v)
 
         #remove the remaining jobs
         for i in xrange(50, 100):
