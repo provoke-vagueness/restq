@@ -248,7 +248,7 @@ class Realm:
         if not os.path.exists(self.config_path):
             self._save_config()
             return
-        with open(self.config_path, 'rb') as f:
+        with open(self.config_path, 'r') as f:
             config = json.loads(f.read())
         self.default_lease_time = config.get('default_lease_time',
                 DEFAULT_LEASE_TIME)
