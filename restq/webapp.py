@@ -1,13 +1,19 @@
 from __future__ import print_function
+import sys
 import traceback
 import json
-import httplib
+if sys.version_info[0] < 3:
+    import httplib as client
+else: 
+    from http import client
+
 import sys
 from getopt import getopt
 
 import bottle
 from bottle import request
-import realms 
+
+from restq import realms 
 
 
 @bottle.delete('/<realm_id>/job/<job_id>')
