@@ -19,6 +19,9 @@ class Realm(object):
         url = "%s%s/tag/%s" % (self._url, self._realm, tag_id)
         self.requester.delete(url)
 
+    def __getitem__(self, job_id):
+        return self.get_job(job_id)
+
     def get_job(self, job_id):
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
         return self.requester.get(url)
@@ -37,7 +40,7 @@ class Realm(object):
         data = {'queue_lease_time':[queue_id, lease_time]}
         self.requester.post(url, data=json.dumps(data))
 
-    def add(self, job_id, queue_id, data, tags=None):
+    def add(self, job_id, queue_id, data=None, tags=None):
         """
 
         """
@@ -96,6 +99,9 @@ class Realms(object):
 
     def __iter__(self):
         return self.realms.__iter__() 
+
+    def __getitem__(self, key):
+        return getattr(self, key)
 
     def __contains__(self, name):
         return name in sel.realms
