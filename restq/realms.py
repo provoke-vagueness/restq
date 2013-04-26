@@ -61,8 +61,8 @@ JOB_TAGS = 1
 JOB_QUEUES = 2
 
 class Realm:
-    def __init__(self, realm):
-        self.realm = realm 
+    def __init__(self, realm_id):
+        self.realm_id = realm_id 
         self.queues = {}
         self.queue_iter = {}
         self.queue_lease_time = {}
@@ -70,7 +70,7 @@ class Realm:
         self.tags = {}
         self.jobs = {}
         self.lock = Lock()
-        self.config_path = os.path.join(CONFIG_ROOT, realm + ".realm")
+        self.config_path = os.path.join(CONFIG_ROOT, realm_id + ".realm")
         self._load_config()
    
     @serialise
@@ -128,14 +128,14 @@ class Realm:
         return jobs
 
     @serialise
-    def add(self, job_id, queue_id, data, tags=[]):
+    def add(self, job_id, queue_id, data=None, tags=[]):
         """store a job into a queue
         
         kwargs:
            job_id 
            queue_id
-           data
         optional :
+           data
            project_id
            task_id
         """
@@ -273,11 +273,19 @@ class Realm:
 
 _realms = dict()
 def get(realm_id):
+    """return a realm for the given realm_id"""
     realm = _realms.get(realm_id, None)
     if realm is None:
         realm = Realm(realm_id)
         _realms[realm_id] = realm
     return realm
+
+
+def delete(realm_id):
+    """delete the realm at realm_id and remove the associated config file"""
+    realm = _realms.pop(realm_id, None)
+    if realm is not None:
+        os.remove(realm.config_path)
 
 
 for filename in os.listdir(CONFIG_ROOT):  
@@ -287,6 +295,10 @@ for filename in os.listdir(CONFIG_ROOT):
 
 
 def get_status():
+    """pull back the status for each realm
+    
+        returns {'realm_id':realm.status}
+    """
     status = {}
     for realm_id, realm in _realms.iteritems():
         status[realm_id] = realm.status
