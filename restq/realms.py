@@ -285,7 +285,10 @@ def delete(realm_id):
     """delete the realm at realm_id and remove the associated config file"""
     realm = _realms.pop(realm_id, None)
     if realm is not None:
-        os.remove(realm.config_path)
+        try:
+            os.remove(realm.config_path)
+        except OSError:
+            pass
 
 
 for filename in os.listdir(CONFIG_ROOT):  
