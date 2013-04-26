@@ -9,13 +9,10 @@ from restq import realms
 class TestRealmsBase(unittest.TestCase):
 
     def setUp(self):
-        try:
-            os.remove(os.path.join(realms.CONFIG_ROOT, 'test.realm'))
-            reload(realms)
-            realms.DEFAULT_LEASE_TIME = 0.5
-            self.realms = realms
-        except OSError:
-            pass
+        reload(realms)
+        realms.delete("test")
+        realms.DEFAULT_LEASE_TIME = 0.5
+        self.realms = realms
 
 
 class TestRealms(TestRealmsBase):
