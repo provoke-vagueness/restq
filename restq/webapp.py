@@ -43,7 +43,7 @@ def add(realm_id, job_id):
         try:
             tags = body.get('tags', [])
             queue_id = body['queue_id']
-            data = body['data']
+            data = body.get('data', None)
             realm = realms.get(realm_id)
             try:
                 realm.add(job_id, queue_id, data, tags=tags)
@@ -133,6 +133,10 @@ def update_realm_config(realm_id):
 
     except ValueError:
         bottle.abort(httplib.BAD_REQUEST, 'Require JSON in request body')
+
+@bottle.delete('/<realm_id>/')
+def delete_realm(realm_id):
+    realms.delete(realm_id)
 
 # Get the status from all of the realms
 @bottle.get('/')
