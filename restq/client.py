@@ -45,12 +45,13 @@ class Realm(object):
 
         """
         url = "%s%s/job/%s" % (self._url, self._realm, job_id)
-        data = {'queue_id':queue_id,
-                'data':data}
+        body = {'queue_id':queue_id}
+        if data is not None:
+            body['data'] = data
         if tags is not None:
-            data['tags'] = tags
-        data = json.dumps(data)
-        self.requester.put(url, data=data)
+            body['tags'] = tags
+        body = json.dumps(body)
+        self.requester.put(url, data=body)
 
     def pull(self, count=5):
         url = "%s%s/job?count=%s" % (self._url, self._realm, count)
