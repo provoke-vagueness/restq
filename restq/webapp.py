@@ -163,7 +163,7 @@ SYNOPSIS
 DESCRIPTION
 
 arguments 
-    HOST:PORT default '127.0.0.1:8080'
+    HOST:PORT default '127.0.0.1:8585'
         specify the ip and port to bind this server too
 
 options 
@@ -186,7 +186,7 @@ def main(args):
         print("Getopt error: %s" % (exc), file=sys.stderr)
         return -1
 
-    bottle_run_kwargs = dict(app=app, debug=False)
+    bottle_run_kwargs = dict(app=app, port=8585, debug=False)
     for opt, arg in opts:
         if opt in ['-h', '--help']:
             print(__help__)
