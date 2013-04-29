@@ -59,7 +59,7 @@ class TestClient(test_realms.TestRealms):
     def setUp(self):
         test_realms.TestRealms.setUp(self)
         requester = Requester()
-        self.realms = client.Realms(url='', requester=requester)
+        self.realms = client.Realms(uri='', requester=requester)
     
 
 

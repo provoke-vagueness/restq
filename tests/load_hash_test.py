@@ -7,8 +7,8 @@ import restq
 
 
 
-def do_test(url='http://localhost:8080'):
-    realms = restq.Realms(url=url)
+def do_test(uri='http://localhost:8080'):
+    realms = restq.Realms(uri=uri)
     test = realms.test
     for i in range(100000):
         job_id = hashlib.md5(str(i)).hexdigest()
