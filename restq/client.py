@@ -24,11 +24,11 @@ class Realm(object):
 
     def get_job(self, job_id):
         uri = "%s%s/job/%s" % (self._uri, self._realm, job_id)
-        return self.requester.get(uri)
+        return self.requester.get(uri).json()
 
     def get_tagged_jobs(self, tag_id):
         uri = "%s%s/tag/%s" % (self._uri, self._realm, tag_id)
-        return self.requester.get(uri)
+        return self.requester.get(uri).json()
 
     def set_default_lease_time(self, lease_time):
         uri = "%s%s/config" % (self._uri, self._realm)
