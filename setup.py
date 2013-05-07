@@ -9,7 +9,8 @@ import os
 import sys
 
 
-install_requires = ["bottle>=0.11",
+install_requires = ["simplejson",
+                    "bottle>=0.11",
                     "requests>=1.1.0"]
 
 def load_version(filename='./restq/version.py'):
