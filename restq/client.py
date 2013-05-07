@@ -1,5 +1,6 @@
-import json
+import simplejson as json
 import requests
+import exceptions
 
 
 class Realm(object):
@@ -11,38 +12,57 @@ class Realm(object):
     def __str__(self):
         return str(self.status)
 
+    def request(self, rtype, *args, **kwargs):
+        func = getattr(self.requester, rtype)
+        r = func(*args, **kwargs)
+        if r.content_type != 'application/json':
+            raise Exception("no json content_type, got %s(%s) '%s'" %\
+                        (r.content_type, r.status_code, r.body))
+        if not r.ok:
+            try:
+                out = r.json()
+            except json.JSONDecodeError:
+                out = {} 
+            etype = out.get('exception', 'Exception')
+            eclass = getattr(exceptions, etype, Expcetion)
+            raise eclass(out.get('message', 'status: %s' % r.status_code))
+        try:
+            out = r.json()
+        except json.JSONDecodeError:
+            raise Exception("Failed to decode response on 200 response")
+        return out
+
     def remove_job(self, job_id):
         uri = "%s%s/job/%s" % (self._uri, self._realm, job_id)
-        self.requester.delete(uri)
+        self.request('delete', uri)
 
     def remove_tagged_jobs(self, tag_id):
         uri = "%s%s/tag/%s" % (self._uri, self._realm, tag_id)
-        self.requester.delete(uri)
+        self.request('delete', uri)
 
     def __getitem__(self, job_id):
         return self.get_job(job_id)
 
     def get_job(self, job_id):
         uri = "%s%s/job/%s" % (self._uri, self._realm, job_id)
-        return self.requester.get(uri).json()
+        return self.request('get', uri)
 
     def get_tagged_jobs(self, tag_id):
         uri = "%s%s/tag/%s" % (self._uri, self._realm, tag_id)
-        return self.requester.get(uri).json()
+        return self.request('get', uri)
 
     def set_default_lease_time(self, lease_time):
         uri = "%s%s/config" % (self._uri, self._realm)
         data = {'default_lease_time':lease_time}
-        self.requester.post(uri, data=json.dumps(data))
+        self.request('post', uri, data=json.dumps(data))
 
     def set_queue_lease_time(self, queue_id, lease_time):
         uri = "%s%s/config" % (self._uri, self._realm)
         data = {'queue_lease_time':[queue_id, lease_time]}
-        self.requester.post(uri, data=json.dumps(data))
+        self.request('post', uri, data=json.dumps(data))
 
     def add(self, job_id, queue_id, data=None, tags=None):
         """
-
         """
         uri = "%s%s/job/%s" % (self._uri, self._realm, job_id)
         body = {'queue_id':queue_id}
@@ -51,20 +71,20 @@ class Realm(object):
         if tags is not None:
             body['tags'] = tags
         body = json.dumps(body)
-        self.requester.put(uri, data=body)
+        self.request('put', uri, data=body)
 
     def pull(self, count=5):
         uri = "%s%s/job?count=%s" % (self._uri, self._realm, count)
-        return self.requester.get(uri).json()
+        return self.request('get', uri)
    
     def get_tag_status(self, tag_id):
         uri = "%s%s/tag/%s/status" % (self._uri, self._realm, tag_id)
-        return self.requester.get(uri).json()
+        return self.request('get', uri)
 
     @property
     def status(self):
         uri = "%s%s/status" % (self._uri, self._realm)
-        return self.requester.get(uri).json()
+        return self.request('get', uri)
 
 
 class Realms(object):
