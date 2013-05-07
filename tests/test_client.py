@@ -21,6 +21,8 @@ def hooker(func):
                 res = object.__getattribute__(self, '_res')
                 if k == 'json':
                     return lambda: res.json
+                if k == 'ok':
+                    return self.status_code == 200
                 return getattr(res, k)
         data = k.pop('data', None)
         if data is not None:
@@ -51,6 +53,7 @@ class Requester():
     @hooker
     def get(self, *a, **k): 
         return self.app.get(*a, **k)
+
 
 
 
