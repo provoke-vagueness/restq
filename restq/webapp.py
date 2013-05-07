@@ -15,6 +15,13 @@ from bottle import request
 
 from restq import realms 
 
+class JSONError(bottle.HTTPResponse):
+    def __init__(self, status, message='', exception='Exception'):
+        body = json.dumps({'error': status,
+                            'exception': exception,
+                            'message': message})
+        bottle.HTTPResponse.__init__(self, status=status, 
+                header={'application':'json'}, body=body)
 
 @bottle.delete('/<realm_id>/job/<job_id>')
 def remove_job(realm_id, job_id):
@@ -23,7 +30,9 @@ def remove_job(realm_id, job_id):
     try:
         realm.remove_job(job_id)
     except:
-        bottle.abort(client.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        message=traceback.format_exc())
+    return {}
 
 @bottle.delete('/<realm_id>/tag/<tag_id>')
 def remove_tagged_jobs(realm_id, tag_id):
@@ -32,7 +41,9 @@ def remove_tagged_jobs(realm_id, tag_id):
     try:
         realm.remove_tagged_jobs(tag_id)
     except:
-        bottle.abort(client.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        message=traceback.format_exc())
+    return {}
 
 @bottle.put('/<realm_id>/job/<job_id>')
 def add(realm_id, job_id):
@@ -54,12 +65,18 @@ def add(realm_id, job_id):
             try:
                 realm.add(job_id, queue_id, data, tags=tags)
             except:
-                bottle.abort(\
-                    client.INTERNAL_SERVER_ERROR, traceback.format_exc())
+                err = JSONError(client.INTERNAL_SERVER_ERROR, 
+                        message=traceback.format_exc())
+                raise err
         except KeyError:
-            bottle.abort(client.BAD_REQUEST, 'Require queue_id & data')
+            raise JSONError(client.BAD_REQUEST,
+                            exception='KeyError',
+                            message='Require queue_id & data')
     except ValueError:
-        bottle.abort(client.BAD_REQUEST, 'Require json object in request body')
+        raise JSONError(client.BAD_REQUEST,
+                        exception='ValueError',
+                        message='Require json object in request body')
+    return {}
 
 @bottle.get('/<realm_id>/job/<job_id>')
 def get_job(realm_id, job_id):
@@ -68,7 +85,8 @@ def get_job(realm_id, job_id):
     try:
         job = realm.get_job(job_id)
     except:
-        bottle.abort(client.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        message=traceback.format_exc())
     return job
 
 @bottle.get('/<realm_id>/tag/<tag_id>')
@@ -78,7 +96,8 @@ def get_tagged_jobs(realm_id, tag_id):
     try:
         jobs = realm.get_tagged_jobs(tag_id)
     except:
-        bottle.abort(client.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        message=traceback.format_exc())
     return jobs
 
 @bottle.get('/<realm_id>/tag/<tag_id>/status')
@@ -88,7 +107,8 @@ def get_tag_status(realm_id, tag_id):
     try:
         status = realm.get_tag_status(tag_id)
     except:
-        bottle.abort(client.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        message=traceback.format_exc())
     return status
 
 @bottle.get('/<realm_id>/job')
@@ -99,7 +119,8 @@ def pull(realm_id):
         count = request.GET.get('count', default=1, type=int)
         job = realm.pull(count=count)
     except:
-        bottle.abort(client.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        message=traceback.format_exc())
     return job
 
 # Get the status of the realm
@@ -110,7 +131,8 @@ def get_realm_status(realm_id):
     try:
         status = realm.status
     except:
-        bottle.abort(client.INTERNAL_SERVER_ERROR, traceback.format_exc())
+        raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        message=traceback.format_exc())
     return status
 
 @bottle.post('/<realm_id>/config')
@@ -123,7 +145,9 @@ def update_realm_config(realm_id):
         lease_time = body.get('default_lease_time', None)
         if lease_time is not None:
             if type(lease_time) not in (long, int):
-                bottle.abbort(client.BAD_REQUEST, "default_lease_time not int")
+                raise JSONError(client.BAD_REQUEST,
+                        exception='TypeError',
+                        message="default_lease_time not int")
             realm.set_default_lease_time(lease_time)
         
         queue_lease_time = queue_lease_time = body.get('queue_lease_time', None)
@@ -131,18 +155,24 @@ def update_realm_config(realm_id):
             try:
                 queue_id, lease_time = queue_lease_time 
             except (ValueError, TypeError) as err:
-                bottle.abort(client.BAD_REQUEST, 
-                                'queue_lease_time err - %s' % err)
+                raise JSONError(client.BAD_REQUEST,
+                        exception='ValueError',
+                        message='queue_lease_time err - %s' % err)
             if type(lease_time) not in (long, int):
-                bottle.abbort(client.BAD_REQUEST, "default_lease_time not int")
+                raise JSONError(client.BAD_REQUEST,
+                        exception='TypeError',
+                        message="default_lease_time not int")
             realm.set_queue_lease_time(queue_id, lease_time)
 
     except ValueError:
-        bottle.abort(client.BAD_REQUEST, 'Require JSON in request body')
+        raise JSONError(client.BAD_REQUEST,
+                        message='Require JSON in request body')
+    return {}
 
 @bottle.delete('/<realm_id>/')
 def delete_realm(realm_id):
     realms.delete(realm_id)
+    return {}
 
 # Get the status from all of the realms
 @bottle.get('/')
