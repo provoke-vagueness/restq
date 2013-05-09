@@ -20,13 +20,13 @@ class TestApi(unittest.TestCase):
 
     def test_add_and_pull(self):
         #add 100 jobs to the a test realm and then verify their data
-        for i in xrange(0, 100):
+        for i in range(0, 100):
             testdata = json.dumps(dict(task_id="testing", queue_id=1, data=i))
             resp = self.app.put("/realm/job/%d" % i, testdata)
             self.assertEquals(resp.status_int, 200)
 
         #on the first 50 jobs, test pulling jobs in order
-        for i in xrange(0, 50):
+        for i in range(0, 50):
             resp = self.app.get("/realm/job")
             self.assertEquals(resp.status_int, 200)
             body = json.loads(resp.body)
@@ -45,6 +45,6 @@ class TestApi(unittest.TestCase):
             self.assertEquals([1,int(k)], v)
 
         #remove the remaining jobs
-        for i in xrange(50, 100):
+        for i in range(50, 100):
             resp = self.app.delete("/realm/job/%d" % i)
             self.assertEquals(resp.status_int, 200)
