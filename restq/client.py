@@ -1,6 +1,11 @@
-import simplejson as json
+import json
 import requests
-import exceptions
+import sys
+
+if sys.version_info[0] < 3:
+    builtins = __builtins__
+else:
+    import builtins 
 
 
 class Realm(object):
@@ -21,14 +26,14 @@ class Realm(object):
         if not r.ok:
             try:
                 out = r.json()
-            except json.JSONDecodeError:
+            except Exception:
                 out = {} 
             etype = out.get('exception', 'Exception')
-            eclass = getattr(exceptions, etype, Expcetion)
+            eclass = getattr(builtins, etype, Expcetion)
             raise eclass(out.get('message', 'status: %s' % r.status_code))
         try:
             out = r.json()
-        except json.JSONDecodeError:
+        except Exception:
             raise Exception("Failed to decode response on 200 response")
         return out
 
