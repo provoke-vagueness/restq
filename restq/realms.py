@@ -5,6 +5,14 @@ from threading import Lock
 from functools import wraps
 import os
 import pprint
+import sys
+
+
+if sys.version_info[0] < 3:
+    dictiter = lambda d: d.iteritems()
+else:
+    dictiter = lambda d: iter(d.items())
+    iternext = lambda i: i.__next__()
 
 
 # The number of seconds a job can be leased for before it can be handed out to
@@ -25,25 +33,25 @@ class QueueIterator:
     def __init__(self, queue):
         self._queue = queue
         self._count = 0
-        self._iter = self._queue.iteritems()
+        self._iter = dictiter(self._queue)
 
     def next(self):
         assert self._queue
         while True:
             try:
-                obj = self._iter.next()
+                obj = next(self._iter)
                 self._count += 1
                 break
             except StopIteration:
-                self._iter = self._queue.iteritems()
+                self._iter = dictiter(self._queue)
         return obj
 
     def revert(self):
         self._count -= 1
-        self._iter = self._queue.iteritems()
+        self._iter = dictiter(self._queue)
         index = len(self._queue) % self._count
         while index > 0:
-            self._iter.next()
+            next(self._iter)
             index -= 1
 
 
@@ -129,16 +137,7 @@ class Realm:
 
     @serialise
     def add(self, job_id, queue_id, data=None, tags=[]):
-        """store a job into a queue
-        
-        kwargs:
-           job_id 
-           queue_id
-        optional :
-           data
-           project_id
-           task_id
-        """
+        """store a job into a queue"""
         #store our job 
         job = self.jobs.get(job_id, None)
         if job is None:
@@ -175,7 +174,7 @@ class Realm:
     @serialise
     def pull(self, count):
         """pull out a max of count jobs"""
-        queues_ids = self.queues.keys()
+        queues_ids = [k for k in self.queues]
         queues_ids.sort()
         jobs = {} 
         for queue_id in queues_ids:
@@ -260,7 +259,7 @@ class Realm:
                       default_lease_time=self.default_lease_time)
         for queue_id in self.queues:
             config['queues'].append((queue_id, self.queue_lease_time[queue_id]))
-        with open(self.config_path, 'wb') as f:
+        with open(self.config_path, 'w') as f:
             f.write(json.dumps(config))
 
     def _create_queue(self, queue_id, lease_time):
@@ -303,7 +302,7 @@ def get_status():
         returns {'realm_id':realm.status}
     """
     status = {}
-    for realm_id, realm in _realms.iteritems():
+    for realm_id, realm in dictiter(_realms):
         status[realm_id] = realm.status
     return status
 
