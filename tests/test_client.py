@@ -5,10 +5,10 @@ import os
 
 import webtest
 
-import test_realms
 from restq import webapp
 from restq import client
 
+from tests import test_realms
 
 
 def hooker(func):
