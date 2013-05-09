@@ -2,6 +2,10 @@ import unittest
 from pprint import pprint
 import time
 import os
+import sys
+
+if sys.version_info[0] >= 3:
+    from imp import reload
 
 from restq import realms 
 
