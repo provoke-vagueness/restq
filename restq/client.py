@@ -20,16 +20,18 @@ class Realm(object):
     def request(self, rtype, *args, **kwargs):
         func = getattr(self.requester, rtype)
         r = func(*args, **kwargs)
-        if r.content_type != 'application/json':
-            raise Exception("no json content_type, got %s(%s) '%s'" %\
-                        (r.content_type, r.status_code, r.body))
+        content_type = r.headers.get('content-type', None)
+        if content_type != 'application/json':
+            raise Exception(
+                    "content-type!=application/json got %s(%s) %s\n'%s'" %\
+                        (content_type, r.status_code, r.url, r.text))
         if not r.ok:
             try:
                 out = r.json()
             except Exception:
-                out = {} 
+                out = {}
             etype = out.get('exception', 'Exception')
-            eclass = getattr(builtins, etype, Expcetion)
+            eclass = getattr(builtins, etype, Exception)
             raise eclass(out.get('message', 'status: %s' % r.status_code))
         try:
             out = r.json()
@@ -93,7 +95,7 @@ class Realm(object):
 
 
 class Realms(object):
-    def __init__(self, uri='http://localhost:8080/',
+    def __init__(self, uri='http://localhost:8585/',
                        requester=requests):
         if not uri.endswith('/'):
             uri += '/'
