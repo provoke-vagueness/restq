@@ -9,9 +9,9 @@ else:
 
 
 class Realm(object):
-    def __init__(self, realm, uri, requester=requests):
+    def __init__(self, name, uri, requester=requests):
         self.requester = requester
-        self._realm = realm
+        self._name = name
         self._uri = uri
 
     def __str__(self):
@@ -36,42 +36,40 @@ class Realm(object):
         try:
             out = r.json()
         except Exception:
-            raise Exception("Failed to decode response on 200 response")
+            raise Exception("Failed to decode response after a 200 response")
         return out
 
     def remove_job(self, job_id):
-        uri = "%s%s/job/%s" % (self._uri, self._realm, job_id)
+        uri = "%s%s/job/%s" % (self._uri, self._name, job_id)
         self.request('delete', uri)
 
     def remove_tagged_jobs(self, tag_id):
-        uri = "%s%s/tag/%s" % (self._uri, self._realm, tag_id)
+        uri = "%s%s/tag/%s" % (self._uri, self._name, tag_id)
         self.request('delete', uri)
 
     def __getitem__(self, job_id):
         return self.get_job(job_id)
 
     def get_job(self, job_id):
-        uri = "%s%s/job/%s" % (self._uri, self._realm, job_id)
+        uri = "%s%s/job/%s" % (self._uri, self._name, job_id)
         return self.request('get', uri)
 
     def get_tagged_jobs(self, tag_id):
-        uri = "%s%s/tag/%s" % (self._uri, self._realm, tag_id)
+        uri = "%s%s/tag/%s" % (self._uri, self._name, tag_id)
         return self.request('get', uri)
 
     def set_default_lease_time(self, lease_time):
-        uri = "%s%s/config" % (self._uri, self._realm)
+        uri = "%s%s/config" % (self._uri, self._name)
         data = {'default_lease_time':lease_time}
         self.request('post', uri, data=json.dumps(data))
 
     def set_queue_lease_time(self, queue_id, lease_time):
-        uri = "%s%s/config" % (self._uri, self._realm)
+        uri = "%s%s/config" % (self._uri, self._name)
         data = {'queue_lease_time':[queue_id, lease_time]}
         self.request('post', uri, data=json.dumps(data))
 
     def add(self, job_id, queue_id, data=None, tags=None):
-        """
-        """
-        uri = "%s%s/job/%s" % (self._uri, self._realm, job_id)
+        uri = "%s%s/job/%s" % (self._uri, self._name, job_id)
         body = {'queue_id':queue_id}
         if data is not None:
             body['data'] = data
@@ -81,17 +79,21 @@ class Realm(object):
         self.request('put', uri, data=body)
 
     def pull(self, count=5):
-        uri = "%s%s/job?count=%s" % (self._uri, self._realm, count)
+        uri = "%s%s/job?count=%s" % (self._uri, self._name, count)
         return self.request('get', uri)
    
     def get_tag_status(self, tag_id):
-        uri = "%s%s/tag/%s/status" % (self._uri, self._realm, tag_id)
+        uri = "%s%s/tag/%s/status" % (self._uri, self._name, tag_id)
         return self.request('get', uri)
 
     @property
     def status(self):
-        uri = "%s%s/status" % (self._uri, self._realm)
+        uri = "%s%s/status" % (self._uri, self._name)
         return self.request('get', uri)
+
+    @property
+    def name(self):
+        return self._name
 
 
 class Realms(object):
