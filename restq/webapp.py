@@ -2,6 +2,7 @@ from __future__ import print_function
 import sys
 import traceback
 import json
+import inspect
 if sys.version_info[0] < 3:
     import httplib as client
 else: 
@@ -17,11 +18,17 @@ from restq import realms
 
 class JSONError(bottle.HTTPResponse):
     def __init__(self, status, message='', exception='Exception'):
+        if inspect.isclass(exception) and issubclass(exception, Exception):
+            exception = exception.__name__
+        elif isinstance(exception, Exception):
+            exception = exception.__class__.__name__
+        elif not type(exception) is str:
+            raise Exception("unknown exception type %s" % type(exception))
         body = json.dumps({'error': status,
                             'exception': exception,
                             'message': message})
         bottle.HTTPResponse.__init__(self, status=status, 
-                header={'application':'json'}, body=body)
+                header={'content-type':'application/json'}, body=body)
 
 @bottle.delete('/<realm_id>/job/<job_id>')
 def remove_job(realm_id, job_id):
@@ -29,8 +36,9 @@ def remove_job(realm_id, job_id):
     realm = realms.get(realm_id)
     try:
         realm.remove_job(job_id)
-    except:
+    except Exception as exc:
         raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        exception=exc,
                         message=traceback.format_exc())
     return {}
 
@@ -40,8 +48,9 @@ def remove_tagged_jobs(realm_id, tag_id):
     realm = realms.get(realm_id)
     try:
         realm.remove_tagged_jobs(tag_id)
-    except:
+    except Exception as exc:
         raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        exception=exc,
                         message=traceback.format_exc())
     return {}
 
@@ -64,8 +73,9 @@ def add(realm_id, job_id):
             realm = realms.get(realm_id)
             try:
                 realm.add(job_id, queue_id, data, tags=tags)
-            except:
+            except Exception as exc:
                 err = JSONError(client.INTERNAL_SERVER_ERROR, 
+                        exception=exc,
                         message=traceback.format_exc())
                 raise err
         except KeyError:
@@ -84,8 +94,9 @@ def get_job(realm_id, job_id):
     realm = realms.get(realm_id)
     try:
         job = realm.get_job(job_id)
-    except:
+    except Exception as exc:
         raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        exception=exc,
                         message=traceback.format_exc())
     return job
 
@@ -95,8 +106,9 @@ def get_tagged_jobs(realm_id, tag_id):
     realm = realms.get(realm_id)
     try:
         jobs = realm.get_tagged_jobs(tag_id)
-    except:
+    except Exception as exc:
         raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        exception=exc,
                         message=traceback.format_exc())
     return jobs
 
@@ -106,8 +118,9 @@ def get_tag_status(realm_id, tag_id):
     realm = realms.get(realm_id)
     try:
         status = realm.get_tag_status(tag_id)
-    except:
+    except Exception as exc:
         raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        exception=exc,
                         message=traceback.format_exc())
     return status
 
@@ -118,8 +131,9 @@ def pull(realm_id):
     try:
         count = request.GET.get('count', default=1, type=int)
         job = realm.pull(count=count)
-    except:
+    except Exception as exc:
         raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        exception=exc,
                         message=traceback.format_exc())
     return job
 
@@ -130,8 +144,9 @@ def get_realm_status(realm_id):
     realm = realms.get(realm_id)
     try:
         status = realm.status
-    except:
+    except Exception as exc:
         raise JSONError(client.INTERNAL_SERVER_ERROR, 
+                        exception=exc,
                         message=traceback.format_exc())
     return status
 
@@ -141,32 +156,32 @@ def update_realm_config(realm_id):
     realm = realms.get(realm_id)
     try:
         body = json.loads(request.body.read(4096))
-
-        lease_time = body.get('default_lease_time', None)
-        if lease_time is not None:
-            if type(lease_time) not in (long, int):
-                raise JSONError(client.BAD_REQUEST,
-                        exception='TypeError',
-                        message="default_lease_time not int")
-            realm.set_default_lease_time(lease_time)
-        
-        queue_lease_time = queue_lease_time = body.get('queue_lease_time', None)
-        if queue_lease_time is not None:
-            try:
-                queue_id, lease_time = queue_lease_time 
-            except (ValueError, TypeError) as err:
-                raise JSONError(client.BAD_REQUEST,
-                        exception='ValueError',
-                        message='queue_lease_time err - %s' % err)
-            if type(lease_time) not in (long, int):
-                raise JSONError(client.BAD_REQUEST,
-                        exception='TypeError',
-                        message="default_lease_time not int")
-            realm.set_queue_lease_time(queue_id, lease_time)
-
-    except ValueError:
+    except Exception as exc:
         raise JSONError(client.BAD_REQUEST,
+                        exception=exc,
                         message='Require JSON in request body')
+
+    lease_time = body.get('default_lease_time', None)
+    if lease_time is not None:
+        if type(lease_time) not in (long, int):
+            raise JSONError(client.BAD_REQUEST,
+                    exception='TypeError',
+                    message="default_lease_time not int")
+        realm.set_default_lease_time(lease_time)
+    
+    queue_lease_time = queue_lease_time = body.get('queue_lease_time', None)
+    if queue_lease_time is not None:
+        try:
+            queue_id, lease_time = queue_lease_time 
+        except (ValueError, TypeError) as err:
+            raise JSONError(client.BAD_REQUEST,
+                    exception='ValueError',
+                    message='queue_lease_time err - %s' % err)
+        if type(lease_time) not in (long, int):
+            raise JSONError(client.BAD_REQUEST,
+                    exception='TypeError',
+                    message="default_lease_time not int")
+        realm.set_queue_lease_time(queue_id, lease_time)
     return {}
 
 @bottle.delete('/<realm_id>/')
