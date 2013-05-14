@@ -29,7 +29,7 @@ class TestApi(unittest.TestCase):
         for i in range(0, 50):
             resp = self.app.get("/realm/job")
             self.assertEquals(resp.status_int, 200)
-            body = json.loads(resp.body)
+            body = json.loads(str(resp.body))
             for k,v in body.iteritems():
                 self.assertEquals([1, int(k)], v)
 
