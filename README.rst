@@ -16,7 +16,7 @@ the github `restq/issues`_ page.
 Project hosting provided by `github.com`_.
 
 
-[mjdorma+yara-ctypes@gmail.com] and [sptonkin@outlook.com]
+[mjdorma+restq@gmail.com] and [sptonkin@outlook.com]
 
 
 Install and run
@@ -53,7 +53,7 @@ Example::
     print(jobs)
 
 
-Compatability
+Compatibility
 =============
 
 *restq* is implemented to be compatible with Python 2.6+ and Python 3.x.
@@ -87,7 +87,7 @@ Continuous integration testing is provided by `Travis CI <http://travis-ci.org/>
 Issues
 ======
 
-Source code for *yara-ctypes* is hosted on `GitHub <https://github.com/provoke-vagueness/restq>`_. 
+Source code for *restq* is hosted on `GitHub <https://github.com/provoke-vagueness/restq>`_. 
 Please file `bug reports <https://github.com/provoke-vagueness/restq/issues>`_
 with GitHub's issues system.
 
@@ -101,8 +101,8 @@ version 0.0.1 (10/04/2013)
 
 
 .. _github.com: https://github.com/provoke-vagueness/restq
-.. _PyPi: http://pypi.python.org/pypi/yara
+.. _PyPi: http://pypi.python.org/pypi/restq
 .. _restq/issues: https://github.com/provoke-vagueness/restq/issues
-.. _restq documentation: http://packages.python.org/yara/
+.. _restq documentation: http://packages.python.org/restq
 .. |build_status| image:: https://secure.travis-ci.org/provoke-vagueness/restq.png?branch=master
    :target: http://travis-ci.org/#!/provoke-vagueness/restq

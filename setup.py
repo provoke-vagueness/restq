@@ -30,7 +30,7 @@ setup(
     zip_safe=False,
     author="Michael Dorman and Stephen Tonkin",
     author_email="mjdorma@gmail.com sptonkin@outlook.com",
-    url="",
+    url="https://github.com/provoke-vagueness/restq",
     description="All-in-memory job queue with RESTful interface.",
     long_description=open('README.rst').read(),
     license="Apache Software Licence",
