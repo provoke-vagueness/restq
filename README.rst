@@ -6,8 +6,6 @@ What is restq:
 * A priority queuing job checkout and completion service.
 * Controlled and accessed through a bottle RESTful web application.
 
-As a reference and guide to restq see: `restq documentation`_
-
 
 For additional tips / tricks with this restq feel free to post a question at 
 the github `restq/issues`_ page. 
@@ -53,37 +51,6 @@ Example::
     print(jobs)
 
 
-Compatibility
-=============
-
-*restq* is implemented to be compatible with Python 2.6+ and Python 3.x.
-It has been tested against the following Python implementations:
-
-Ubuntu 12.04:
-
- + CPython 2.7 (32bit, 64bit)
- + CPython 3.2 (32bit, 64bit)
-
-Ubuntu 11.10 |build_status|:
-
- + CPython 2.6 (32bit)
- + CPython 2.7 (32bit)
- + CPython 3.2 (32bit)
- + PyPy 1.9.0 (32bit)
-
-Windows 7:
-
- + CPython 2.6 (32bit, 64bit)
- + CPython 3.2 (32bit, 64bit)
-
-OS X Mountain Lion
-
- + CPython 2.7 (64bit)
-
-
-Continuous integration testing is provided by `Travis CI <http://travis-ci.org/>`_.
-
-
 Issues
 ======
 
@@ -103,6 +70,5 @@ version 0.0.1 (10/04/2013)
 .. _github.com: https://github.com/provoke-vagueness/restq
 .. _PyPi: http://pypi.python.org/pypi/restq
 .. _restq/issues: https://github.com/provoke-vagueness/restq/issues
-.. _restq documentation: http://packages.python.org/restq
 .. |build_status| image:: https://secure.travis-ci.org/provoke-vagueness/restq.png?branch=master
    :target: http://travis-ci.org/#!/provoke-vagueness/restq
