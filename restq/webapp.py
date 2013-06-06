@@ -22,7 +22,7 @@ class JSONError(bottle.HTTPResponse):
             exception = exception.__name__
         elif isinstance(exception, Exception):
             exception = exception.__class__.__name__
-        elif not type(exception) is str:
+        elif not type(exception) in [str, unicode]:
             raise Exception("unknown exception type %s" % type(exception))
         body = json.dumps({'error': status,
                             'exception': exception,
