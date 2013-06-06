@@ -13,6 +13,7 @@ class Realm(object):
         self.requester = requester
         self._name = name
         self._uri = uri
+        self._bulk_jobs = []
 
     def __str__(self):
         return str(self.status)
@@ -77,6 +78,23 @@ class Realm(object):
             body['tags'] = tags
         body = json.dumps(body)
         self.request('put', uri, data=body)
+    
+    def bulk_append(self, job_id, queue_id, data=None, tags=None):
+        job = {'job_id':job_id, 'queue_id': queue_id}
+        if data is not None:
+            job['data'] = data
+        if tags is not None:
+            job['tags'] = tags
+        self._bulk_jobs.append(job)
+
+    def bulk_flush(self):
+        if not self._bulk_jobs:
+            return
+        uri= "%s%s/job" % (self._uri, self._name)
+        body = {'jobs': self._bulk_jobs}
+        body = json.dumps(body)
+        self.request('post', uri, data=body)
+        self._bulk_jobs = []
 
     def pull(self, count=5):
         uri = "%s%s/job?count=%s" % (self._uri, self._name, count)

@@ -3,6 +3,7 @@ import sys
 import traceback
 import json
 import inspect
+import functools
 if sys.version_info[0] < 3:
     import httplib as client
 else: 
@@ -15,6 +16,7 @@ import bottle
 from bottle import request
 
 from restq import realms 
+
 
 class JSONError(bottle.HTTPResponse):
     def __init__(self, status, message='', exception='Exception'):
@@ -30,31 +32,41 @@ class JSONError(bottle.HTTPResponse):
         bottle.HTTPResponse.__init__(self, status=status, 
                 header={'content-type':'application/json'}, body=body)
 
+
+def wrap_json_error(f):
+    @functools.wraps(f)
+    def wrapper(*a, **k):
+        try:
+            return f(*a, **k)
+        except JSONError:
+            raise 
+        except Exception as exc:
+            raise JSONError(client.INTERNAL_SERVER_ERROR,
+                    exception=exc,
+                    message=traceback.format_exc())
+    return wrapper
+
+
 @bottle.delete('/<realm_id>/job/<job_id>')
+@wrap_json_error
 def remove_job(realm_id, job_id):
     """Remove a job from a realm"""
     realm = realms.get(realm_id)
-    try:
-        realm.remove_job(job_id)
-    except Exception as exc:
-        raise JSONError(client.INTERNAL_SERVER_ERROR, 
-                        exception=exc,
-                        message=traceback.format_exc())
+    realm.remove_job(job_id)
     return {}
 
+
 @bottle.delete('/<realm_id>/tag/<tag_id>')
+@wrap_json_error
 def remove_tagged_jobs(realm_id, tag_id):
     """Remove a tag and all of its jobs from a realm"""
     realm = realms.get(realm_id)
-    try:
-        realm.remove_tagged_jobs(tag_id)
-    except Exception as exc:
-        raise JSONError(client.INTERNAL_SERVER_ERROR, 
-                        exception=exc,
-                        message=traceback.format_exc())
+    realm.remove_tagged_jobs(tag_id)
     return {}
 
+
 @bottle.put('/<realm_id>/job/<job_id>')
+@wrap_json_error
 def add(realm_id, job_id):
     """Put a job into a queue
     JSON requires:  
@@ -65,19 +77,13 @@ def add(realm_id, job_id):
     """
     #validate input
     try:
-        body = json.loads(request.body.read(4096))
+        body = json.loads(request.body.read())
         try:
             tags = body.get('tags', [])
             queue_id = body['queue_id']
             data = body.get('data', None)
             realm = realms.get(realm_id)
-            try:
-                realm.add(job_id, queue_id, data, tags=tags)
-            except Exception as exc:
-                err = JSONError(client.INTERNAL_SERVER_ERROR, 
-                        exception=exc,
-                        message=traceback.format_exc())
-                raise err
+            realm.add(job_id, queue_id, data, tags=tags)
         except KeyError:
             raise JSONError(client.BAD_REQUEST,
                             exception='KeyError',
@@ -88,69 +94,88 @@ def add(realm_id, job_id):
                         message='Require json object in request body')
     return {}
 
+
+@bottle.post('/<realm_id>/job')
+@wrap_json_error
+def post_multiple_jobs(realm_id):
+    """Multiple job post
+
+    body contains jobs=[job, job, job, ...]
+            where job={job_id, queue_id, data=None, tags=[]}
+
+    """
+    #validate input
+    try:
+        body = json.loads(request.body.read())
+        try:
+            jobs = body['jobs']
+            realm = realms.get(realm_id)
+            for job in jobs:
+                job_id = job['job_id']
+                queue_id = job['queue_id']
+                data = job.get('data', None)
+                tags = job.get('tags', [])
+                realm.add(job_id, queue_id, data, tags=tags)
+        except KeyError:
+            raise JSONError(client.BAD_REQUEST,
+                            exception='KeyError',
+                            message='Require queue_id & data')
+    except ValueError:
+        raise JSONError(client.BAD_REQUEST,
+                        exception='ValueError',
+                        message='Require json object in request body')
+    return {}
+
+
 @bottle.get('/<realm_id>/job/<job_id>')
+@wrap_json_error
 def get_job(realm_id, job_id):
     """Get the status of a job"""
     realm = realms.get(realm_id)
-    try:
-        job = realm.get_job(job_id)
-    except Exception as exc:
-        raise JSONError(client.INTERNAL_SERVER_ERROR, 
-                        exception=exc,
-                        message=traceback.format_exc())
+    job = realm.get_job(job_id)
     return job
 
+
 @bottle.get('/<realm_id>/tag/<tag_id>')
+@wrap_json_error
 def get_tagged_jobs(realm_id, tag_id):
     """return a dict of all jobs tagged by tag_id"""
     realm = realms.get(realm_id)
-    try:
-        jobs = realm.get_tagged_jobs(tag_id)
-    except Exception as exc:
-        raise JSONError(client.INTERNAL_SERVER_ERROR, 
-                        exception=exc,
-                        message=traceback.format_exc())
+    jobs = realm.get_tagged_jobs(tag_id)
     return jobs
 
+
 @bottle.get('/<realm_id>/tag/<tag_id>/status')
+@wrap_json_error
 def get_tag_status(realm_id, tag_id):
     """return an int of the number of jobs related to tag_id"""
     realm = realms.get(realm_id)
-    try:
-        status = realm.get_tag_status(tag_id)
-    except Exception as exc:
-        raise JSONError(client.INTERNAL_SERVER_ERROR, 
-                        exception=exc,
-                        message=traceback.format_exc())
+    status = realm.get_tag_status(tag_id)
     return status
 
+
 @bottle.get('/<realm_id>/job')
+@wrap_json_error
 def pull(realm_id):
     """pull the next set of jobs from the realm"""
     realm = realms.get(realm_id)
-    try:
-        count = request.GET.get('count', default=1, type=int)
-        job = realm.pull(count=count)
-    except Exception as exc:
-        raise JSONError(client.INTERNAL_SERVER_ERROR, 
-                        exception=exc,
-                        message=traceback.format_exc())
+    count = request.GET.get('count', default=1, type=int)
+    job = realm.pull(count=count)
     return job
+
 
 # Get the status of the realm
 @bottle.get('/<realm_id>/status')
+@wrap_json_error
 def get_realm_status(realm_id):
     """return the status of a realm"""
     realm = realms.get(realm_id)
-    try:
-        status = realm.status
-    except Exception as exc:
-        raise JSONError(client.INTERNAL_SERVER_ERROR, 
-                        exception=exc,
-                        message=traceback.format_exc())
+    status = realm.status
     return status
 
+
 @bottle.post('/<realm_id>/config')
+@wrap_json_error
 def update_realm_config(realm_id):
     """update the configuration of a realm"""
     realm = realms.get(realm_id)
@@ -184,13 +209,16 @@ def update_realm_config(realm_id):
         realm.set_queue_lease_time(queue_id, lease_time)
     return {}
 
+
 @bottle.delete('/<realm_id>/')
+@wrap_json_error
 def delete_realm(realm_id):
     realms.delete(realm_id)
     return {}
 
 # Get the status from all of the realms
 @bottle.get('/')
+@wrap_json_error
 def realms_status():
     """return all of the realms and their statuses""" 
     return realms.get_status()
