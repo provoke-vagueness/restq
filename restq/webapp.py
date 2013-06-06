@@ -219,7 +219,7 @@ options
         run in debug mode
 
     --quiet 
-        run in quite mode
+        run in quiet mode
 """
 
 def main(args):
@@ -239,7 +239,7 @@ def main(args):
         elif opt in ['--server']:
             bottle_run_kwargs['server'] = arg
         elif opt in ['--quiet']:
-            bottle_run_kwargs['quite'] = True
+            bottle_run_kwargs['quiet'] = True
         elif opt in ['--debug']:
             bottle_run_kwargs['debug'] = True
 
