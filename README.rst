@@ -62,9 +62,13 @@ with GitHub's issues system.
 Change log
 ==========
 
+version 0.0.3 (06/06/2013)
+ 
+ * bulk post & stable error handling
+
 version 0.0.1 (10/04/2013)
 
-* pre life
+ * pre life
 
 
 .. _github.com: https://github.com/provoke-vagueness/restq
