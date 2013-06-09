@@ -14,8 +14,10 @@ from getopt import getopt
 
 import bottle
 from bottle import request
+bottle.BaseRequest.MEMFILE_MAX = 1600000000
 
 from restq import realms 
+from restq import config
 
 
 class JSONError(bottle.HTTPResponse):
@@ -216,6 +218,7 @@ def delete_realm(realm_id):
     realms.delete(realm_id)
     return {}
 
+
 # Get the status from all of the realms
 @bottle.get('/')
 @wrap_json_error
@@ -225,71 +228,12 @@ def realms_status():
 
 
 app = bottle.default_app()
-
-
-__help__ = """
-NAME restq-webapp - Start the restq webapp server
-
-SYNOPSIS
-    restq-webapp [OPTIONS]... [HOST:PORT]
-
-DESCRIPTION
-
-arguments 
-    HOST:PORT default '127.0.0.1:8585'
-        specify the ip and port to bind this server too
-
-options 
-    --server=
-        choose the server adapter to use.
-
-    --debug
-        run in debug mode
-
-    --quiet 
-        run in quiet mode
-"""
-
-def main(args):
-    try:
-        opts, args = getopt(args, 'h',['help',
-            'server=', 'debug', 'quiet',
-            ])
-    except Exception as exc:
-        print("Getopt error: %s" % (exc), file=sys.stderr)
-        return -1
-
-    bottle_run_kwargs = dict(app=app, port=8585, debug=False)
-    for opt, arg in opts:
-        if opt in ['-h', '--help']:
-            print(__help__)
-            return 0
-        elif opt in ['--server']:
-            bottle_run_kwargs['server'] = arg
-        elif opt in ['--quiet']:
-            bottle_run_kwargs['quiet'] = True
-        elif opt in ['--debug']:
-            bottle_run_kwargs['debug'] = True
-
-    if args:
-        try:
-            host, port = args[0].split(':')
-        except Exception as exc:
-            print("failed to parse IP:PORT (%s)" % args[0])
-            return -1
-        try:
-            port = int(port)
-        except ValueError:
-            print("failed to convert port to int (%s)" % port)
-            return -1
-        bottle_run_kwargs['host'] = host
-        bottle_run_kwargs['port'] = port
-
-    bottle.run(**bottle_run_kwargs)
-
-
-entry = lambda :main(sys.argv[1:])
-if __name__ == "__main__":
-    sys.exit(entry())
-
+def run():
+    global proxy_requests
+    bottle_kwargs = dict(debug=config.webapp['debug'],
+                         quiet=config.webapp['quiet'],
+                         host=config.webapp['host'],
+                         port=config.webapp['port'],
+                         server=config.webapp['server'])
+    bottle.run(app=app, **bottle_kwargs)
 
