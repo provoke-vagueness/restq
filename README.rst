@@ -5,7 +5,7 @@ Why restq?
 
 We wanted to have a simple platform independent solution for managing the
 coordination and distribution of batched execution across our analysis
-platforms.  restq solved our wants to have a system that could:
+platforms.  restq solved our wants into a system that could:
 
  * segregate execution based on a category or type (realm),
  * manage priorities of job execution (ordered queues),
@@ -130,6 +130,10 @@ with GitHub's issues system.
 
 Change log
 ==========
+
+version 0.0.4 (09/06/2013)
+
+ * config and cli implementation
 
 version 0.0.3 (06/06/2013)
  
