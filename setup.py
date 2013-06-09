@@ -10,6 +10,7 @@ import sys
 
 
 install_requires = ["bottle>=0.11",
+                    "pyyaml>=0.0",
                     "requests>=1.1.0"]
 
 def load_version(filename='./restq/version.py'):
