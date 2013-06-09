@@ -1,10 +1,27 @@
 Introduction to restq 
 *********************
 
-What is restq:
+Why restq?
 
-* A priority queuing job checkout and completion service.
-* Controlled and accessed through a bottle RESTful web application.
+We wanted to have a simple platform independent solution for managing the
+coordination and distribution of batched execution across our analysis
+platforms.  restq solved our wants to have a system that could:
+
+ * segregate execution based on a category or type (realm),
+ * manage priorities of job execution (ordered queues),
+ * enqueue, check-out, and expiry time based (almost FIFO) dequeuing of jobs
+   from a queue.
+ * status of jobs remaining against arbitrary tag indices.
+ * zero configuration for the concepts talked about above.  
+
+
+What's in restq:
+
+ * An implementation of the execution management system described above.  
+ * A RESTful web API that exposes complete control over the execution
+   management system.
+ * A Python client that seamlessly interfaces the RESTful web API.
+
 
 
 For additional tips / tricks with this restq feel free to post a question at 
@@ -23,32 +40,84 @@ Install and run
 Simply run the following::
 
     > python setup.py install
-    > python setup.py test
-    > python -m restq -h
 
 or `PyPi`_:: 
 
     > pip install restq
-    > python -m restq -h
 
-Example::
 
-    > nohup restq-webapp &
-    > ipython
-    # import the client 
-    from restq import Realms
-    # connect to our local restq-webapp
-    realms = Realms()
-    # add some jobs
-    realms.test.add('job 1', 0, 'do the dishes', tags=['house work'])
-    realms.test.add('job 2', 0, 'cut the grass', tags=['house work'])
-    realms.test.add('job 3', 1, 'fix bugs in restq', tags=['devel'])
-    realms.test.add('job 4', 3, 'document restq', tags=['devel'])
-    realms.test.add('job 5', 0, 'go for walk', tags=['sport'])
-    realms.test.add('job 6', 0, 'go for walk with dog', tags=['sport'])
-    realms.test.add('job 7', 2, 'go for bike ride', tags=['sport'])
-    jobs = realms.test.pull(count=7)
-    print(jobs)
+Getting started
+===============
+
+Coding with restq
+-----------------
+
+A simple example on how ::
+
+ > restq web &
+ > ipython
+
+ In [1]: from restq import Realms
+
+ In [2]: realms = Realms()
+
+ In [3]: realms.test.
+ realms.test.add
+ realms.test.bulk_add
+ realms.test.bulk_flush
+ realms.test.get_job
+ realms.test.get_tag_status
+ realms.test.get_tagged_jobs
+ realms.test.name
+ realms.test.pull
+ realms.test.remove_job
+ realms.test.remove_tagged_jobs
+ realms.test.request
+ realms.test.requester
+ realms.test.set_default_lease_time
+ realms.test.set_queue_lease_time
+ realms.test.status
+
+ In [3]: realms.test.add('job 1', 0, 'do the dishes', tags=['house work'])
+
+ In [4]: realms.test.add('job 2', 0, 'cut the grass', tags=['house work'])
+
+ In [5]: realms.test.add('job 3', 1, 'fix bugs in restq', tags=['devel'])
+
+ In [6]: realms.test.add('job 4', 3, 'document restq', tags=['devel'])
+
+ In [7]: realms.test.add('job 5', 0, 'go for walk', tags=['sport'])
+
+ In [8]: realms.test.status
+ Out[8]: 
+ {u'queues': {u'0': 4, u'1': 1, u'2': 1, u'3': 1},
+  u'total_jobs': 7,
+  u'total_tags': 3}
+
+ In [9]: jobs = realms.test.pull(count=7)
+
+ In [10]: jobs
+ Out[10]: 
+ {u'job 1': [0, u'do the dishes'],
+  u'job 2': [0, u'cut the grass'],
+  u'job 3': [1, u'fix bugs in restq'],
+  u'job 4': [3, u'document restq'],
+  u'job 5': [0, u'go for walk'],
+  u'job 6': [0, u'go for walk with dog'],
+  u'job 7': [2, u'go for bike ride']}
+
+ In [11]: realms.test.get_tag_status('house work')
+ Out[11]: {u'count': 2}
+
+ In [12]: realms.test.get_tagged_jobs('devel')
+ Out[12]: 
+ {u'job 3': {u'data': u'fix bugs in restq',
+   u'queues': [[1, 82.17003393173218]],
+   u'tags': [u'devel']},
+  u'job 4': {u'data': u'document restq',
+   u'queues': [[3, 82.16989994049072]],
+   u'tags': [u'devel']}}
+
 
 
 Issues
