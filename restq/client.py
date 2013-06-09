@@ -7,6 +7,8 @@ if sys.version_info[0] < 3:
 else:
     import builtins 
 
+from restq import realms
+
 
 class Realm(object):
     def __init__(self, name, uri, requester=requests):
@@ -43,10 +45,12 @@ class Realm(object):
     def remove_job(self, job_id):
         uri = "%s%s/job/%s" % (self._uri, self._name, job_id)
         self.request('delete', uri)
+    remove_job.__doc__ = realms.Realm.remove_job.__doc__
 
     def remove_tagged_jobs(self, tag_id):
         uri = "%s%s/tag/%s" % (self._uri, self._name, tag_id)
         self.request('delete', uri)
+    remove_tagged_jobs.__doc__ = realms.Realm.remove_tagged_jobs.__doc__
 
     def __getitem__(self, job_id):
         return self.get_job(job_id)
@@ -54,20 +58,24 @@ class Realm(object):
     def get_job(self, job_id):
         uri = "%s%s/job/%s" % (self._uri, self._name, job_id)
         return self.request('get', uri)
+    get_job.__doc__ = realms.Realm.get_job.__doc__
 
     def get_tagged_jobs(self, tag_id):
         uri = "%s%s/tag/%s" % (self._uri, self._name, tag_id)
         return self.request('get', uri)
+    get_tagged_jobs.__doc__ = realms.Realm.get_tagged_jobs.__doc__
 
     def set_default_lease_time(self, lease_time):
         uri = "%s%s/config" % (self._uri, self._name)
         data = {'default_lease_time':lease_time}
         self.request('post', uri, data=json.dumps(data))
+    set_default_lease_time.__doc__ = realms.Realm.set_default_lease_time.__doc__
 
     def set_queue_lease_time(self, queue_id, lease_time):
         uri = "%s%s/config" % (self._uri, self._name)
         data = {'queue_lease_time':[queue_id, lease_time]}
         self.request('post', uri, data=json.dumps(data))
+    set_queue_lease_time.__doc__ = realms.Realm.set_queue_lease_time.__doc__
 
     def add(self, job_id, queue_id, data=None, tags=None):
         uri = "%s%s/job/%s" % (self._uri, self._name, job_id)
@@ -78,8 +86,15 @@ class Realm(object):
             body['tags'] = tags
         body = json.dumps(body)
         self.request('put', uri, data=body)
+    add.__doc__ = realms.Realm.add.__doc__ 
     
-    def bulk_append(self, job_id, queue_id, data=None, tags=None):
+    def bulk_add(self, job_id, queue_id, data=None, tags=None):
+        """add jobs in bulk.
+        
+        Note: once you have added jobs through this interface, you are
+            required to call bulk_flush to transmit the jobs in bulk to the
+            web service.
+        """
         job = {'job_id':job_id, 'queue_id': queue_id}
         if data is not None:
             job['data'] = data
@@ -88,6 +103,8 @@ class Realm(object):
         self._bulk_jobs.append(job)
 
     def bulk_flush(self):
+        """flush jobs through to the web service that have been queued up using
+        the bulk_add function"""
         if not self._bulk_jobs:
             return
         uri= "%s%s/job" % (self._uri, self._name)
@@ -99,10 +116,12 @@ class Realm(object):
     def pull(self, count=5):
         uri = "%s%s/job?count=%s" % (self._uri, self._name, count)
         return self.request('get', uri)
-   
+    pull.__doc__ = realms.Realm.pull.__doc__
+
     def get_tag_status(self, tag_id):
         uri = "%s%s/tag/%s/status" % (self._uri, self._name, tag_id)
         return self.request('get', uri)
+    get_tag_status.__doc__ = realms.Realm.get_tag_status.__doc__
 
     @property
     def status(self):
