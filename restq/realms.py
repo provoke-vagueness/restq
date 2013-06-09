@@ -7,23 +7,14 @@ import os
 import pprint
 import sys
 
+from restq import config
+
 
 if sys.version_info[0] < 3:
     dictiter = lambda d: d.iteritems()
 else:
     dictiter = lambda d: iter(d.items())
     iternext = lambda i: i.__next__()
-
-
-# The number of seconds a job can be leased for before it can be handed out to
-# a new requester
-DEFAULT_LEASE_TIME = 60 * 10 
-
-
-#setup the config path
-CONFIG_ROOT = os.path.join(os.path.expanduser("~"), ".restq")
-if not os.path.exists(CONFIG_ROOT):
-    os.makedirs(CONFIG_ROOT)
 
 
 # Need a circular (ring) iterator to walk the ordered dict and we also need to 
@@ -74,18 +65,19 @@ class Realm:
         self.queues = {}
         self.queue_iter = {}
         self.queue_lease_time = {}
-        self.default_lease_time = DEFAULT_LEASE_TIME
+        self.default_lease_time = config.realms['default_lease_time']
         self.tags = {}
         self.jobs = {}
         self.lock = Lock()
-        self.config_path = os.path.join(CONFIG_ROOT, realm_id + ".realm")
+        p = os.path.join(config.realms['realms_config_root'], 
+                            realm_id + ".realm")
+        self.realm_config_path = p
         self._load_config()
    
     @serialise
     def remove_job(self, job_id):
         """remove job_id from the system"""
         self._remove_job(job_id)
-
     def _remove_job(self, job_id):
         # remove the job
         job = self.jobs.pop(job_id)
@@ -218,7 +210,7 @@ class Realm:
              queues = queue_status)
 
     def get_tag_status(self, tag_id):
-        """ return the count of jobs tagged by tag_id """
+        """return the count of jobs tagged by tag_id"""
         tag = self.tags.get(tag_id, None)
         if tag is None:
             return {'count':None}
@@ -232,6 +224,8 @@ class Realm:
 
     @serialise 
     def set_default_lease_time(self, lease_time):
+        """The number of seconds a job can be leased for before a job can be
+        handed out to a new requester"""
         self.default_lease_time = lease_time 
         self._save_config()
 
@@ -244,23 +238,24 @@ class Realm:
         self._save_config()
 
     def _load_config(self):
-        if not os.path.exists(self.config_path):
+        if not os.path.exists(self.realm_config_path):
             self._save_config()
             return
-        with open(self.config_path, 'r') as f:
-            config = json.loads(f.read())
-        self.default_lease_time = config.get('default_lease_time',
-                DEFAULT_LEASE_TIME)
-        for queue_id, lease_time in config['queues']:
+        with open(self.realm_config_path, 'r') as f:
+            realm_config = json.loads(f.read())
+        self.default_lease_time = realm_config.get('default_lease_time',
+                config.realms['default_lease_time'])
+        for queue_id, lease_time in realm_config['queues']:
             self._create_queue(queue_id, lease_time)
 
     def _save_config(self):
-        config = dict(queues=[],
+        realm_config = dict(queues=[],
                       default_lease_time=self.default_lease_time)
         for queue_id in self.queues:
-            config['queues'].append((queue_id, self.queue_lease_time[queue_id]))
-        with open(self.config_path, 'w') as f:
-            f.write(json.dumps(config))
+            realm_config['queues'].append(
+                    (queue_id, self.queue_lease_time[queue_id]))
+        with open(self.realm_config_path, 'w') as f:
+            f.write(json.dumps(realm_config))
 
     def _create_queue(self, queue_id, lease_time):
         queue = OrderedDict()
@@ -285,15 +280,24 @@ def delete(realm_id):
     realm = _realms.pop(realm_id, None)
     if realm is not None:
         try:
-            os.remove(realm.config_path)
+            os.remove(realm.realm_config_path)
         except OSError:
             pass
 
 
-for filename in os.listdir(CONFIG_ROOT):  
-    realm_id, ext = os.path.splitext(filename)
-    if ext == '.realm':
-        get(realm_id)
+def set_realms_config_root(config_root):
+    global _realms
+    _realms = {}
+
+    config.realms['realms_config_root'] = config_root
+    if not os.path.exists(config_root):
+        os.makedirs(config_root)
+
+    for filename in os.listdir(config_root):  
+        realm_id, ext = os.path.splitext(filename)
+        if ext == '.realm':
+            get(realm_id)
+set_realms_config_root(config.realms['realms_config_root'])
 
 
 def get_status():
