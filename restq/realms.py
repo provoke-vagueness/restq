@@ -1,5 +1,5 @@
 import time
-import json
+import yaml 
 from collections import OrderedDict
 from threading import Lock
 from functools import wraps
@@ -242,7 +242,7 @@ class Realm:
             self._save_config()
             return
         with open(self.realm_config_path, 'r') as f:
-            realm_config = json.loads(f.read())
+            realm_config = yaml.load(f)
         self.default_lease_time = realm_config.get('default_lease_time',
                 config.realms['default_lease_time'])
         for queue_id, lease_time in realm_config['queues']:
@@ -255,7 +255,7 @@ class Realm:
             realm_config['queues'].append(
                     (queue_id, self.queue_lease_time[queue_id]))
         with open(self.realm_config_path, 'w') as f:
-            f.write(json.dumps(realm_config))
+            yaml.dump(realm_config, f, default_flow_style=False)
 
     def _create_queue(self, queue_id, lease_time):
         queue = OrderedDict()
