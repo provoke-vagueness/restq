@@ -20,6 +20,15 @@ values = dict(
                 default_lease_time=60*10,
                 realms_config_root=_default_realm_config_root,
             ),
+            cli=dict(
+                realm='default',
+                queue_id='0',
+                tags=[],
+            ),
+            client=dict(
+                uri='http://localhost:8586/',
+                count=5,
+            ),
         )
 
 
@@ -42,7 +51,7 @@ if os.path.exists(_config_file_path):
         _update_values(yaml.load(f))
 else:
     with open(_config_file_path, 'w') as f:
-        yaml.dump(values, f)
+        yaml.dump(values, f, default_flow_style=False)
 
 
 # Update config with the values found in our current env

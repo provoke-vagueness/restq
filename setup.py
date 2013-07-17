@@ -8,7 +8,6 @@ import platform
 import os
 import sys
 
-
 install_requires = ["bottle>=0.11",
                     "pyyaml>=0.0",
                     "requests>=1.1.0"]
@@ -39,7 +38,6 @@ setup(
     entry_points={
         'console_scripts': [
             'restq = restq.cli:entry',
-            'restq-webapp = restq.webapp:entry'
             ]
     },
     platforms=['cygwin', 'win', 'linux'],

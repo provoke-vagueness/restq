@@ -13,6 +13,28 @@ def command_web():
     return 0
 
 
+def command_put():
+    return 0
+
+
+def command_pull():
+    return 0
+
+
+def command_remove():
+    return 0
+
+
+def command_list():
+    return 0
+
+
+def command_status():
+    return 0
+
+
+def command_status():
+    return 0
 
 
 defaults = {}
@@ -24,9 +46,9 @@ __help__ = """\
 NAME restq - control over the restq 
 
 SYNOPSIS
-    restq [COMMAND]
+    restq COMMAND
 
-Commands:
+COMMAND options:
 
     web [OPTIONS] [[HOST:][PORT]] 
         Run the RESTful web app.
@@ -42,7 +64,49 @@ Commands:
             --quiet=%(webapp_quiet)s
                 Run in quite mode.
 
+    put [OPTIONS] [ARG,...] 
+        Put arguments into a REALM.
 
+        options
+            -r or --realm=%(cli_realm)s
+                Specify which realm to operate in.
+            --uri=%(client_uri)s
+                Define the connection uri.
+            --queue=%(cli_queue_id)s
+                Put arguments into a specific priority queue id.
+            --tags=[TAG,...]
+                Tag the arguments.
+
+    pull [OPTIONS]
+        Pull arguments from REALM.  This will 'checkout' the arguments
+        for the default timeout period.
+
+        options
+            -r or --realm=%(cli_realm)s
+                Specify which realm to operate in.
+            --count=%(client_count)s
+                Number of jobs to pull from the queue
+    
+    remove arg|tag [OPTIONS] ARG|TAG
+        Remove an arg or a set of arguments from a realm.
+
+        options
+            -r or --realm=%(cli_realm)s
+                Specify which realm to operate in.
+ 
+    list 
+        List the available realms.
+
+    status REALM
+        Print the status of a REALM.
+
+    get TAG
+        Get all arguments tagged in a realm with TAG. 
+
+        options
+            -r or --realm=%(cli_realm)s
+                Specify which realm to operate in.
+ 
 """ % defaults
 
 
@@ -50,15 +114,18 @@ def main(args):
     if not args:
         print("No arguments provided", file=sys.stderr)
         return -1
-    if '-h' in args or '--help' in args:
+    if '-h' in args or '--help' in args or "help" in args:
         print(__help__)
         return 0
 
     command = args.pop(0)
 
     try:
-        opts, args = getopt(args, '', [
+        opts, args = getopt(args, '-r', [
             'server=', 'debug=', 'quiet=',
+            'realm=', 'uri=',
+            'count=',
+            'tags=', 'queue='
         ])
     except Exception as exc:
         print("Getopt error: %s" % (exc), file=sys.stderr)
@@ -71,8 +138,21 @@ def main(args):
             config.webapp['quite'] = arg.lower() != 'false'
         elif opt in ['--debug']:
             config.webapp['debug'] = arg.lower() != 'false'
-
-
+        elif opt in ['--realm']:
+            config.cli['realm'] = arg
+        elif opt in ['--uri']:
+            config.client['uri'] = arg
+        elif opt in ['--count']:
+            try:
+                config.client['count'] = int(arg)
+            except ValueError:
+                print("failed to convert count to int (%s)" % arg)
+                return -1
+        elif opt in ['--queue']:
+            config.cli['queue_id'] = arg
+        elif opt in ['--tags']:
+            config.cli['tags'] = arg.split(',')
+        
     if command == 'web':
         if args:
             hostport = args[0]
@@ -93,6 +173,24 @@ def main(args):
             config.webapp['host'] = host
             config.webapp['port'] = port
         return command_web()
+
+    elif command == 'put':
+        return command_put()
+
+    elif command == 'pull':
+        return command_pull()
+
+    elif command == 'remove':
+        return command_remove()
+
+    elif command == 'list':
+        return command_list()
+
+    elif command == 'status':
+        return command_status()
+
+    elif command == 'get':
+        return command_get()
 
     else:
         print("%s is not a valid command " % command, file=sys.stderr)
