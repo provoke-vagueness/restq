@@ -26,14 +26,21 @@ def command_remove():
 
 
 def command_list():
+    print("Realms:\n%s" % "\n  + ".join(restq.Realms()))
     return 0
 
 
 def command_status():
+    realm = restq.Realms()[config.cli['realm']]
+    print("Realm: %s" % realm.name)
+    status = realm.status
+    print("Contains %(total_tags)s tags with %(total_jobs)s jobs" % (status))
+    queues = ["%s(%s)" % (a, b) for a, b in status['queues']]
+    print("Queues: " + ", ".join(queues))
     return 0
 
 
-def command_status():
+def command_get():
     return 0
 
 
