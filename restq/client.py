@@ -35,7 +35,10 @@ class Realm(object):
             except Exception:
                 out = {}
             etype = out.get('exception', 'Exception')
-            eclass = getattr(builtins, etype, Exception)
+            if isinstance(builtins, dict):
+                eclass = builtins.get(etype, 'Exception')
+            else:
+                eclass = getattr(builtins, etype, 'Exception')
             raise eclass(out.get('message', 'status: %s' % r.status_code))
         try:
             out = r.json()
