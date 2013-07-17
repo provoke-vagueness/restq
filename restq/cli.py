@@ -13,11 +13,20 @@ def command_web():
     return 0
 
 
-def command_put():
+def command_add(arg):
+    realm = restq.Realms()[config.cli['realm']]
+    tags = config.cli['tags']
+    if not tags:
+        tags = None
+    realm.add(arg, config.cli['queue_id'], tags=tags)
     return 0
 
 
 def command_pull():
+    realm = restq.Realms()[config.cli['realm']]
+    jobs = realm.pull()
+    for job in jobs:
+        print(job)
     return 0
 
 
@@ -26,21 +35,39 @@ def command_remove():
 
 
 def command_list():
-    print("Realms:\n%s" % "\n  + ".join(restq.Realms()))
+    print("Realms:\n  + %s" % "\n  + ".join(restq.Realms()))
     return 0
 
 
-def command_status():
+def command_status(arg=None, tag=None):
     realm = restq.Realms()[config.cli['realm']]
-    print("Realm: %s" % realm.name)
-    status = realm.status
-    print("Contains %(total_tags)s tags with %(total_jobs)s jobs" % (status))
-    queues = ["%s(%s)" % (a, b) for a, b in status['queues']]
-    print("Queues: " + ", ".join(queues))
+    if arg is not None:
+        job = realm.get_job(arg)
+        print("Status of argument %s:" % arg)
+        print("Tagged with: " + ", ".join(job['tags']))
+        queues = ["%8s | %0.2f" % (a, b) for a, b in job['queues']]
+        print("queue id | (s) since dequeue\n%s" % "\n  + ".join(queues))
+    elif tag is not None:
+        status = realm.get_tag_status(tag)
+        print("%s jobs tagged with %s" % (status['count'], tag))
+    else:
+        print("Status of realm %s:" % realm.name)
+        status = realm.status
+        print("Contains %(total_tags)s tags with %(total_jobs)s jobs" % \
+                (status))
+        print("Defined queues: " + ", ".join(status['queues']))
     return 0
 
 
-def command_get():
+def command_get(tag):
+    realm = restq.Realms()[config.cli['realm']]
+    try:
+        jobs = realm.get_tagged_jobs(tag)
+    except KeyError:
+        print("No jobs found for tag '%s'" % tag)
+    else:
+        for arg in jobs:
+            print(arg)
     return 0
 
 
@@ -71,8 +98,8 @@ COMMAND options:
             --quiet=%(webapp_quiet)s
                 Run in quite mode.
 
-    put [OPTIONS] [ARG,...] 
-        Put arguments into a REALM.
+    add [OPTIONS] [ARG,...] 
+        Add arguments into a REALM.
 
         options
             -r or --realm=%(cli_realm)s
@@ -93,27 +120,53 @@ COMMAND options:
                 Specify which realm to operate in.
             --count=%(client_count)s
                 Number of jobs to pull from the queue
-    
+              --uri=%(client_uri)s
+                Define the connection uri.
+   
     remove arg|tag [OPTIONS] ARG|TAG
         Remove an arg or a set of arguments from a realm.
 
         options
             -r or --realm=%(cli_realm)s
                 Specify which realm to operate in.
+             --uri=%(client_uri)s
+                Define the connection uri.
  
-    list 
+    list [OPTIONS] 
         List the available realms.
 
-    status REALM
-        Print the status of a REALM.
+        options
+            --uri=%(client_uri)s
+                Define the connection uri.
+ 
+    status [OPTIONS] arg|tag [ARG|TAG]
+        Print the status of a REALM, or an argument or a tag in a realm.
 
-    get TAG
+        options
+            -r or --realm=%(cli_realm)s
+                Define which realm to read the status from.
+            --uri=%(client_uri)s
+                Define the connection uri.
+ 
+    get [OPTIONS] TAG
         Get all arguments tagged in a realm with TAG. 
 
         options
             -r or --realm=%(cli_realm)s
                 Specify which realm to operate in.
+            --uri=%(client_uri)s
+                Define the connection uri.
  
+Example:
+    restq add --tags=work "ls -lah"
+    restq add --tags=work,fun pwd
+    restq get work 
+    restq status
+    restq pull
+    restq status arg pwd
+    restq status arg "ls -lah"
+    restq status tag work
+
 """ % defaults
 
 
@@ -181,8 +234,11 @@ def main(args):
             config.webapp['port'] = port
         return command_web()
 
-    elif command == 'put':
-        return command_put()
+    elif command == 'add':
+        if not args:
+            print("No arguments provided for addition into a realm.")
+            return -1
+        return command_add(" ".join(args))
 
     elif command == 'pull':
         return command_pull()
@@ -194,10 +250,27 @@ def main(args):
         return command_list()
 
     elif command == 'status':
-        return command_status()
+        tag = None
+        arg = None
+        if args:
+            if len(args) < 2:
+                print("require at least one more argument for this status")
+                return -1
+            subcmd = args.pop(0)
+            if subcmd == 'arg':
+                arg = args.pop(0)
+            elif subcmd == 'tag':
+                tag = args.pop(0)
+            else:
+                print("status args can only be arg or tag, got '%s'" % subcmd)
+                return -1
+        return command_status(arg=arg, tag=tag)
 
     elif command == 'get':
-        return command_get()
+        if not args:
+            print("No TAG argument provided.")
+            return -1
+        return command_get(args.pop(0))
 
     else:
         print("%s is not a valid command " % command, file=sys.stderr)
