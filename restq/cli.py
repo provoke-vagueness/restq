@@ -30,7 +30,27 @@ def command_pull():
     return 0
 
 
-def command_remove():
+def command_remove(arg=None, tag=None):
+    realm = restq.Realms()[config.cli['realm']]
+    if arg is not None:
+        try:
+            realm.remove_job(arg)
+        except KeyError:
+            print("failed to find argument '%s' in realm" % arg)
+            return -1
+        else:
+            print("removed argument %s" % arg)
+    elif tag is not None:
+        try:
+            realm.remove_tagged_jobs(tag)
+        except KeyError:
+            print("failed to find tag '%s' in realm" % tag)
+            return -1
+        else:
+            print("removed tagged arguments for %s" % tag)
+    else:
+        print("The remove command requires an arg or tag input.")
+        return -1
     return 0
 
 
@@ -42,14 +62,24 @@ def command_list():
 def command_status(arg=None, tag=None):
     realm = restq.Realms()[config.cli['realm']]
     if arg is not None:
-        job = realm.get_job(arg)
-        print("Status of argument %s:" % arg)
-        print("Tagged with: " + ", ".join(job['tags']))
-        queues = ["%8s | %0.2f" % (a, b) for a, b in job['queues']]
-        print("queue id | (s) since dequeue\n%s" % "\n  + ".join(queues))
+        try:
+            job = realm.get_job(arg)
+        except KeyError:
+            print("No arguments found in realm for '%s'" % arg)
+            return -1
+        else:
+            print("Status of argument %s:" % arg)
+            print("Tagged with: " + ", ".join(job['tags']))
+            queues = ["%8s | %0.2f" % (a, b) for a, b in job['queues']]
+            print("queue id | (s) since dequeue\n%s" % "\n  + ".join(queues))
     elif tag is not None:
-        status = realm.get_tag_status(tag)
-        print("%s jobs tagged with %s" % (status['count'], tag))
+        try:
+            status = realm.get_tag_status(tag)
+        except KeyError:
+            print("No tag found in realm for '%s'" % tag)
+            return -1
+        else:
+            print("%s jobs tagged with %s" % (status['count'], tag))
     else:
         print("Status of realm %s:" % realm.name)
         status = realm.status
@@ -123,7 +153,7 @@ COMMAND options:
               --uri=%(client_uri)s
                 Define the connection uri.
    
-    remove arg|tag [OPTIONS] ARG|TAG
+    remove [OPTIONS] arg|tag ARG|TAG
         Remove an arg or a set of arguments from a realm.
 
         options
@@ -243,18 +273,15 @@ def main(args):
     elif command == 'pull':
         return command_pull()
 
-    elif command == 'remove':
-        return command_remove()
-
     elif command == 'list':
         return command_list()
 
-    elif command == 'status':
+    elif command in ['remove', 'status']:
         tag = None
         arg = None
         if args:
             if len(args) < 2:
-                print("require at least one more argument for this status")
+                print("require at least one more argument for %s" % command)
                 return -1
             subcmd = args.pop(0)
             if subcmd == 'arg':
@@ -264,7 +291,10 @@ def main(args):
             else:
                 print("status args can only be arg or tag, got '%s'" % subcmd)
                 return -1
-        return command_status(arg=arg, tag=tag)
+        if command == 'status':
+            return command_status(arg=arg, tag=tag)
+        else:
+            return command_remove(arg=arg, tag=tag)
 
     elif command == 'get':
         if not args:
