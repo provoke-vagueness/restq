@@ -71,7 +71,7 @@ def command_status(arg=None, tag=None):
             print("Status of argument %s:" % arg)
             print("Tagged with: " + ", ".join(job['tags']))
             queues = ["%8s | %0.2f" % (a, b) for a, b in job['queues']]
-            print("queue id | (s) since dequeue\n%s" % "\n  + ".join(queues))
+            print("queue id | (s) since dequeue\n%s" % "\n".join(queues))
     elif tag is not None:
         try:
             status = realm.get_tag_status(tag)
