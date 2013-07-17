@@ -8,6 +8,7 @@ else:
     import builtins 
 
 from restq import realms
+from restq import config
 
 
 class Realm(object):
@@ -113,7 +114,9 @@ class Realm(object):
         self.request('post', uri, data=body)
         self._bulk_jobs = []
 
-    def pull(self, count=5):
+    def pull(self, count=None):
+        if count is None:
+            count = config.client['count']
         uri = "%s%s/job?count=%s" % (self._uri, self._name, count)
         return self.request('get', uri)
     pull.__doc__ = realms.Realm.pull.__doc__
@@ -134,8 +137,10 @@ class Realm(object):
 
 
 class Realms(object):
-    def __init__(self, uri='http://localhost:8585/',
+    def __init__(self, uri=None,
                        requester=requests):
+        if uri is None:
+            uri = config.client['uri']
         if not uri.endswith('/'):
             uri += '/'
         self.requester = requester
@@ -171,7 +176,7 @@ class Realms(object):
         return getattr(self, key)
 
     def __contains__(self, name):
-        return name in sel.realms
+        return name in self.realms
 
     def get(self, name):
         return self.__getattribute__(name)
