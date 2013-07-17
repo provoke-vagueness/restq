@@ -10,7 +10,7 @@ platforms.  restq solved our wants into a system that could:
  * segregate execution based on a category or type (realm),
  * manage priorities of job execution (ordered queues),
  * enqueue, check-out, and expiry time based (almost FIFO) dequeuing of jobs
-   from a queue.
+   from a realm.
  * status of jobs remaining against arbitrary tag indices.
  * zero configuration for the concepts talked about above.  
 
@@ -119,6 +119,76 @@ A simple example on how ::
    u'tags': [u'devel']}}
 
 
+Using restq in the shell
+------------------------
+
+Lets start this example by adding some arguments into the default realm::
+
+  > restq add "ls -lah"
+  >
+  > # Lets tag the argument "ls -lah" with a label of 'work'. 
+  > restq add --tags=work "ls -lah"
+  >
+  > # Add another argument to the realm, but this time we'll tag it with work
+  > # and fun. 
+  > restq add --tags=work,fun  pwd
+  >
+  > # Checkout the status of the realm. 
+  > restq status
+  Status of realm default:
+  Contains 2 tags with 2 jobs
+  Defined queues: 0
+  >
+  > # time to add pwd to another queue
+  > restq add --queue=1 pwd
+  >
+  > restq status
+  Status of realm default:
+  Contains 2 tags with 2 jobs
+  Defined queues: 1, 0
+
+Now lets see how we can pull (checkout) arguments and execute them::
+
+  > # Pull and execute a maximum of two arguments from the default realm.  
+  > # After the default time out, these arguments will be available for 
+  > # checkout once again.
+  > while read i; do eval "$i"; done < <(restq pull --count=2)
+  drwxr-xr-x 9 mick mick 4.0K Jul 18 08:01 .
+  drwxrwxr-x 9 mick mick 4.0K Jul 14 03:07 ..
+  drwxrwxr-x 3 mick mick 4.0K Jul 12 00:04 docs
+  -rw-rw-r-- 1 mick mick   72 Jul 12 00:04 MANIFEST.in
+  -rw-rw-r-- 1 mick mick 3.7K Jul 12 00:04 README.rst
+  drwxrwxr-x 2 mick mick 4.0K Jul 17 23:13 restq
+  -rw-rw-r-- 1 mick mick 2.1K Jul 17 19:57 setup.py
+  drwxrwxr-x 2 mick mick 4.0K Jul 12 00:04 tests
+  -rw-rw-r-- 1 mick mick  321 Jul 12 00:04 .travis.yml
+  /home/mick/work/restq
+  >
+  > # The argument pwd was placed into two queues.  Lets do another pull to 
+  > # see it being dequeued from queue 1.
+  > restq pull
+  pwd
+  >
+  > # Lets check the status of the pwd argument since checkout. This shows what
+  > # queues a specific argument is in, what tags it has, and how long it has
+  > # been since it was checked out (pulled). 
+  > restq status arg pwd
+  Status of argument pwd:
+  Tagged with: work
+  queue id | (s) since dequeue
+       1 | 35.22
+       0 | 454.49
+  >
+  > # Time to remove pwd from our realm...  We're done with this argument and 
+  > # we no longer require it for execution.  You will notice that the fun tag
+  > # no longer exists in the realm as it was only attched to pwd. 
+  > restq remove arg pwd
+  >
+  > # The default lease time for a dequeue of an arguement is 600s.  At this 
+  > # point we should be able to pull our ls -lah argument from the realm
+  > restq pull
+  ls -lah
+
 
 Issues
 ======
@@ -131,9 +201,14 @@ with GitHub's issues system.
 Change log
 ==========
 
+version 0.1.0 (18/07/2013)
+
+ * implemented cli controls. 
+ * realms now using yaml -> breaks compatibility with previous version.
+
 version 0.0.4 (09/06/2013)
 
- * config and cli implementation
+ * config and cli shell implementation
 
 version 0.0.3 (06/06/2013)
  
