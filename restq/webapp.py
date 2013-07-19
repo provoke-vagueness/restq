@@ -8,7 +8,7 @@ if sys.version_info[0] < 3:
     import httplib as client
 else: 
     from http import client
-
+import time
 import sys
 from getopt import getopt
 
@@ -49,9 +49,32 @@ def wrap_json_error(f):
     return wrapper
 
 
+def profile_function(profile_dict): 
+    def decorator(f):
+        p = dict(call_count=0, max_time=-1, min_time=9999, total_time=0)
+        profile_dict[f.func_name] = p
+        @functools.wraps(f)
+        def wrapper(*a, **k):
+            try:
+                s = time.time()
+                return f(*a, **k)
+            finally:
+                t = time.time() - s
+                p['call_count'] += 1
+                p['max_time'] = max(p['max_time'], t)
+                p['min_time'] = max(p['min_time'], t)
+                p['total_time'] += t
+        return wrapper
+    return decorator
+
+
+profile = dict()
+
+
 @bottle.delete('/<realm_id>/job/<job_id>')
 @wrap_json_error
-def remove_job(realm_id, job_id):
+@profile_function(profile)
+def delete_job(realm_id, job_id):
     """Remove a job from a realm"""
     realm = realms.get(realm_id)
     realm.remove_job(job_id)
@@ -60,7 +83,8 @@ def remove_job(realm_id, job_id):
 
 @bottle.delete('/<realm_id>/tag/<tag_id>')
 @wrap_json_error
-def remove_tagged_jobs(realm_id, tag_id):
+@profile_function(profile)
+def delete_tagged_jobs(realm_id, tag_id):
     """Remove a tag and all of its jobs from a realm"""
     realm = realms.get(realm_id)
     realm.remove_tagged_jobs(tag_id)
@@ -69,7 +93,8 @@ def remove_tagged_jobs(realm_id, tag_id):
 
 @bottle.put('/<realm_id>/job/<job_id>')
 @wrap_json_error
-def add(realm_id, job_id):
+@profile_function(profile)
+def add_job(realm_id, job_id):
     """Put a job into a queue
     JSON requires:  
         queue_id   -  
@@ -99,6 +124,7 @@ def add(realm_id, job_id):
 
 @bottle.post('/<realm_id>/job')
 @wrap_json_error
+@profile_function(profile)
 def post_multiple_jobs(realm_id):
     """Multiple job post
 
@@ -131,6 +157,7 @@ def post_multiple_jobs(realm_id):
 
 @bottle.get('/<realm_id>/job/<job_id>')
 @wrap_json_error
+@profile_function(profile)
 def get_job(realm_id, job_id):
     """Get the status of a job"""
     realm = realms.get(realm_id)
@@ -140,6 +167,7 @@ def get_job(realm_id, job_id):
 
 @bottle.get('/<realm_id>/tag/<tag_id>')
 @wrap_json_error
+@profile_function(profile)
 def get_tagged_jobs(realm_id, tag_id):
     """return a dict of all jobs tagged by tag_id"""
     realm = realms.get(realm_id)
@@ -149,6 +177,7 @@ def get_tagged_jobs(realm_id, tag_id):
 
 @bottle.get('/<realm_id>/tag/<tag_id>/status')
 @wrap_json_error
+@profile_function(profile)
 def get_tag_status(realm_id, tag_id):
     """return an int of the number of jobs related to tag_id"""
     realm = realms.get(realm_id)
@@ -158,7 +187,8 @@ def get_tag_status(realm_id, tag_id):
 
 @bottle.get('/<realm_id>/job')
 @wrap_json_error
-def pull(realm_id):
+@profile_function(profile)
+def pull_jobs(realm_id):
     """pull the next set of jobs from the realm"""
     realm = realms.get(realm_id)
     count = request.GET.get('count', default=1, type=int)
@@ -169,6 +199,7 @@ def pull(realm_id):
 # Get the status of the realm
 @bottle.get('/<realm_id>/status')
 @wrap_json_error
+@profile_function(profile)
 def get_realm_status(realm_id):
     """return the status of a realm"""
     realm = realms.get(realm_id)
@@ -178,6 +209,7 @@ def get_realm_status(realm_id):
 
 @bottle.post('/<realm_id>/config')
 @wrap_json_error
+@profile_function(profile)
 def update_realm_config(realm_id):
     """update the configuration of a realm"""
     realm = realms.get(realm_id)
@@ -214,14 +246,23 @@ def update_realm_config(realm_id):
 
 @bottle.delete('/<realm_id>/')
 @wrap_json_error
+@profile_function(profile)
 def delete_realm(realm_id):
     realms.delete(realm_id)
     return {}
 
 
-# Get the status from all of the realms
+@bottle.get('/performance')
+@wrap_json_error
+@profile_function(profile)
+def webapp_performance():
+    """return the performance of the webapp""" 
+    return profile
+
+
 @bottle.get('/')
 @wrap_json_error
+@profile_function(profile)
 def realms_status():
     """return all of the realms and their statuses""" 
     return realms.get_status()
