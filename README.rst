@@ -122,7 +122,7 @@ A simple example on how ::
 Using restq in the shell
 ------------------------
 
-Lets start this example by adding some arguments into the default realm::
+Lets start this example by adding some arguments into the default realm ::
 
   > restq add "ls -lah"
   >
@@ -147,7 +147,7 @@ Lets start this example by adding some arguments into the default realm::
   Contains 2 tags with 2 jobs
   Defined queues: 1, 0
 
-Now lets see how we can pull (checkout) arguments and execute them::
+Now lets see how we can pull (checkout) arguments and execute them ::
 
   > # Pull and execute a maximum of two arguments from the default realm.  
   > # After the default time out, these arguments will be available for 
