@@ -2,6 +2,9 @@ from __future__ import print_function
 import sys
 import os
 from getopt import getopt
+import marshal 
+import zlib
+import base64
 
 import restq
 from restq import config
@@ -18,15 +21,29 @@ def command_add(arg):
     tags = config.cli['tags']
     if not tags:
         tags = None
-    realm.add(arg, config.cli['queue_id'], tags=tags)
+    filepath = config.cli.get('filepath')
+    if filepath:
+        with open(filepath, 'rb') as f:
+            d = f.read()
+        data = base64.encodestring(zlib.compress(marshal.dumps((filepath, d))))
+    else:
+        data = None
+    arg = base64.encodestring(arg)
+    realm.add(arg, config.cli['queue_id'], tags=tags, data=data)
     return 0
 
 
 def command_pull():
     realm = restq.Realms()[config.cli['realm']]
     jobs = realm.pull()
-    for job in jobs:
-        print(job)
+    for arg, obj in jobs.items():
+        _, data = obj
+        if data:
+            obj = marshal.loads(zlib.decompress(base64.decodestring(data)))
+            filepath, data = obj
+            with open(filepath, 'wb') as f:
+                f.write(data)
+        print(base64.decodestring(arg))
     return 0
 
 
@@ -34,7 +51,7 @@ def command_remove(arg=None, tag=None):
     realm = restq.Realms()[config.cli['realm']]
     if arg is not None:
         try:
-            realm.remove_job(arg)
+            realm.remove_job(base64.encodestring(arg))
         except KeyError:
             print("failed to find argument '%s' in realm" % arg)
             return -1
@@ -63,7 +80,7 @@ def command_status(arg=None, tag=None):
     realm = restq.Realms()[config.cli['realm']]
     if arg is not None:
         try:
-            job = realm.get_job(arg)
+            job = realm.get_job(base65.encodestring(arg))
         except KeyError:
             print("No arguments found in realm for '%s'" % arg)
             return -1
@@ -97,7 +114,7 @@ def command_get(tag):
         print("No jobs found for tag '%s'" % tag)
     else:
         for arg in jobs:
-            print(arg)
+            print(base64.decodestring(arg))
     return 0
 
 
@@ -140,6 +157,10 @@ COMMAND options:
                 Put arguments into a specific priority queue id.
             --tags=[TAG,...]
                 Tag the arguments.
+            --file=[FILEPATH]
+                Load the data from the filepath with this job.  When the job
+                is pulled, this filepath will be automatically written to 
+                with the data from this job. 
 
     pull [OPTIONS]
         Pull arguments from REALM.  This will 'checkout' the arguments
@@ -150,7 +171,7 @@ COMMAND options:
                 Specify which realm to operate in.
             --count=%(client_count)s
                 Number of jobs to pull from the queue
-              --uri=%(client_uri)s
+            --uri=%(client_uri)s
                 Define the connection uri.
    
     remove [OPTIONS] arg|tag ARG|TAG
@@ -215,7 +236,7 @@ def main(args):
             'server=', 'debug=', 'quiet=',
             'realm=', 'uri=',
             'count=',
-            'tags=', 'queue='
+            'tags=', 'queue=', 'file=',
         ])
     except Exception as exc:
         print("Getopt error: %s" % (exc), file=sys.stderr)
@@ -242,6 +263,11 @@ def main(args):
             config.cli['queue_id'] = arg
         elif opt in ['--tags']:
             config.cli['tags'] = arg.split(',')
+        elif opt in ['--file']:
+            if not os.path.exists(arg):
+                print("failed to find file '%s'" % arg)
+                return -1
+            config.cli['filepath'] = arg
         
     if command == 'web':
         if args:
