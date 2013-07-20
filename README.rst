@@ -25,9 +25,9 @@ What's in restq:
    /etc/restq.conf, ~/.restq.conf
  * A command line interface accessible in the shell through the entry point
    'restq'.  The CLI makes it trivial to kick off a restq server.  It also
-   implements a set of commands which allow users to build a power set
-   of console shell scripts for scheduled distribute execution via restq
-   servers. 
+   implements a set of commands which allow users to enqueue and dequeue commands into
+   a realm. This makes it super trivial to deploy scheduled execution jobs
+   across a pool of servers. 
 
 
 For additional tips / tricks with this restq feel free to post a question at 
