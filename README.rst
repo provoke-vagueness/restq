@@ -21,7 +21,13 @@ What's in restq:
  * A RESTful web API that exposes complete control over the execution
    management system.
  * A Python client that seamlessly interfaces the RESTful web API.
-
+ * Default configuration configurable through environment variables or
+   /etc/restq.conf, ~/.restq.conf
+ * A command line interface accessible in the shell through the entry point
+   'restq'.  The CLI makes it trivial to kick off a restq server.  It also
+   implements a set of commands which allow users to build a power set
+   of console shell scripts for scheduled distribute execution via restq
+   servers. 
 
 
 For additional tips / tricks with this restq feel free to post a question at 
@@ -46,11 +52,8 @@ or `PyPi`_::
     > pip install restq
 
 
-Getting started
-===============
-
 Coding with restq
------------------
+=================
 
 A simple example on how ::
 
@@ -119,27 +122,37 @@ A simple example on how ::
    u'tags': [u'devel']}}
 
 
-Using restq in the shell
-------------------------
+Using restq's CLI
+=================
 
-Lets start this example by adding some arguments into the default realm ::
+Adding arguments into the default realm
+---------------------------------------
+
+Add the argument "ls -lah" into the default realm. ::
 
   > restq add "ls -lah"
-  >
-  > # Lets tag the argument "ls -lah" with a label of 'work'. 
+
+If we want to refer to a group of commands we can tag a command (even if it
+already exists).  
+
+Tag the argument "ls -lah" with a label of 'work'. ::
+
   > restq add --tags=work "ls -lah"
-  >
-  > # Add another argument to the realm, but this time we'll tag it with work
-  > # and fun. 
+
+Add another argument to the realm, but this time we'll tag it with work and
+fun. ::
+
   > restq add --tags=work,fun  pwd
-  >
-  > # Checkout the status of the realm. 
+
+Checkout the status of the realm. ::
+
   > restq status
   Status of realm default:
   Contains 2 tags with 2 jobs
   Defined queues: 0
-  >
-  > # time to add pwd to another queue
+
+Time to add pwd to another queue. ::
+  
   > restq add --queue=1 pwd
   >
   > restq status
@@ -147,11 +160,15 @@ Lets start this example by adding some arguments into the default realm ::
   Contains 2 tags with 2 jobs
   Defined queues: 1, 0
 
-Now lets see how we can pull (checkout) arguments and execute them ::
 
-  > # Pull and execute a maximum of two arguments from the default realm.  
-  > # After the default time out, these arguments will be available for 
-  > # checkout once again.
+Pulling (or doing a checkout) of arguments for execution
+--------------------------------------------------------
+
+Continuation from the previous example.
+
+Pull and execute a maximum of two arguments from the default realm. After the
+default time out, these arguments will be available for checkout once again. ::
+
   > while read i; do eval "$i"; done < <(restq pull --count=2)
   drwxr-xr-x 9 mick mick 4.0K Jul 18 08:01 .
   drwxrwxr-x 9 mick mick 4.0K Jul 14 03:07 ..
@@ -163,31 +180,50 @@ Now lets see how we can pull (checkout) arguments and execute them ::
   drwxrwxr-x 2 mick mick 4.0K Jul 12 00:04 tests
   -rw-rw-r-- 1 mick mick  321 Jul 12 00:04 .travis.yml
   /home/mick/work/restq
-  >
-  > # The argument pwd was placed into two queues.  Lets do another pull to 
-  > # see it being dequeued from queue 1.
+
+The argument pwd was placed into two queues.  The next pull will see pwd being
+dequeued from queue 1. ::
+
   > restq pull
   pwd
-  >
-  > # Lets check the status of the pwd argument since checkout. This shows what
-  > # queues a specific argument is in, what tags it has, and how long it has
-  > # been since it was checked out (pulled). 
+
+Lets check the status of the pwd argument since checkout. This shows what
+queues a specific argument is in, what tags it has, and how long it has been
+since it was checked out (pulled). ::
+
   > restq status arg pwd
   Status of argument pwd:
   Tagged with: work
   queue id | (s) since dequeue
        1 | 35.22
        0 | 454.49
-  >
-  > # Time to remove pwd from our realm...  We're done with this argument and 
-  > # we no longer require it for execution.  You will notice that the fun tag
-  > # no longer exists in the realm as it was only attched to pwd. 
+
+Time to remove pwd from our realm...  We're done with this argument and we no
+longer require it for execution.  You will notice that the fun tag no longer
+exists in the realm as it was only attached to pwd.  ::
+
   > restq remove arg pwd
   >
-  > # The default lease time for a dequeue of an arguement is 600s.  At this 
-  > # point we should be able to pull our ls -lah argument from the realm
+
+The default lease time for a dequeue of an argument is 600s.  After this
+expiry time, 'ls -lah' will once again be available for dequeue. :: 
+
   > restq pull
   ls -lah
+
+
+How to distribute a shell script for execution 
+----------------------------------------------
+
+Add 'worker.sh' script into the default realm. :: 
+
+  > restq add --file=worker.sh "chmod +x worker.sh; ./worker.sh"
+
+Now when this job is dequeued using the restq cli, the path './worker.sh' will
+be written to using the data read from the original 'worker.sh' and the
+arguments will be written out to stdout. :: 
+
+  > while read i; do eval "$i"; done < <(restq pull)
 
 
 Issues

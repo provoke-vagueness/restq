@@ -25,8 +25,9 @@ def command_add(arg):
     if filepath:
         with open(filepath, 'rb') as f:
             d = f.read()
-        data = base64.encodestring(zlib.compress(marshal.dumps((filepath, d)),
-                                                 9))
+        data = base64.encodestring(\
+                zlib.compress(marshal.dumps((filepath, d)), 9)
+            )
     else:
         data = None
     arg = base64.encodestring(arg)
