@@ -137,7 +137,8 @@ class Realm:
             self.jobs[job_id] = job
         else:
             if data != job[JOB_DATA]:
-                msg = "add existing job '%s' with data != old data" % (job_id)
+                msg = "add of existing job '%s' with data != old data" % \
+                        (job_id)
                 raise ValueError(msg)
         
         # update the job's queue record 
