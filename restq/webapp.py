@@ -105,20 +105,20 @@ def add_job(realm_id, job_id):
     #validate input
     try:
         body = json.loads(request.body.read())
-        try:
-            tags = body.get('tags', [])
-            queue_id = body['queue_id']
-            data = body.get('data', None)
-            realm = realms.get(realm_id)
-            realm.add(job_id, queue_id, data, tags=tags)
-        except KeyError:
-            raise JSONError(client.BAD_REQUEST,
-                            exception='KeyError',
-                            message='Require queue_id & data')
     except ValueError:
         raise JSONError(client.BAD_REQUEST,
                         exception='ValueError',
                         message='Require json object in request body')
+    try:
+        tags = body.get('tags', [])
+        queue_id = body['queue_id']
+        data = body.get('data', None)
+        realm = realms.get(realm_id)
+        realm.add(job_id, queue_id, data, tags=tags)
+    except KeyError:
+        raise JSONError(client.BAD_REQUEST,
+                        exception='KeyError',
+                        message='Require queue_id & data')
     return {}
 
 
