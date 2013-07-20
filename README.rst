@@ -223,7 +223,16 @@ Now when this job is dequeued using the restq cli, the path './worker.sh' will
 be written to using the data read from the original 'worker.sh' and the
 arguments will be written out to stdout. :: 
 
-  > while read i; do eval "$i"; done < <(restq pull)
+  > eval "`restq pull`"
+
+The following is an example of a script that could be deployed across multiple
+machines to continuously pull and execute jobs that have been added into the
+default realm. ::
+
+  > while [ 1 ]; do 
+  > while read i; do eval "$i"; done < <(restq pull);
+  > sleep 1;
+  > done
 
 
 Issues
