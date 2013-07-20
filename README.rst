@@ -215,12 +215,12 @@ expiry time, 'ls -lah' will once again be available for dequeue. ::
 How to distribute a shell script for execution 
 ----------------------------------------------
 
-Add 'worker.sh' script into the default realm. :: 
+Add 'work.sh' script into the default realm. :: 
 
-  > restq add --file=worker.sh "chmod +x worker.sh; ./worker.sh"
+  > restq add --file=work.sh "chmod +x work.sh; ./work.sh"
 
-Now when this job is dequeued using the restq cli, the path './worker.sh' will
-be written to using the data read from the original 'worker.sh' and the
+Now when this job is dequeued using the restq cli, the path './work.sh' will
+be written to using the data read from the original 'work.sh' and the
 arguments will be written out to stdout. :: 
 
   > eval "`restq pull`"
