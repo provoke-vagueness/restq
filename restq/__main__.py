@@ -9,7 +9,7 @@ try:
     import bjoern
     server="bjoern"
 except ImportError:
-    server=None
+    server="wsgiref"
 
 if __name__ == "__main__":
     bottle.run(app=webapp.app, 

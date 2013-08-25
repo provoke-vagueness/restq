@@ -82,7 +82,7 @@ def command_status(arg=None, tag=None):
     realm = restq.Realms()[config.cli['realm']]
     if arg is not None:
         try:
-            job = realm.get_job(base65.encodestring(arg))
+            job = realm.get_job(base64.encodestring(arg))
         except KeyError:
             print("No arguments found in realm for '%s'" % arg)
             return -1

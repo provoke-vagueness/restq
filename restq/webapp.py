@@ -70,14 +70,19 @@ def profile_function(profile_dict):
 
 profile = dict()
 
+def _del_job(realm_id, job_id):
+    realm = realms.get(realm_id)
+    try:
+        realm.remove_job(job_id)
+    except KeyError:
+        pass
 
 @bottle.delete('/<realm_id>/job/<job_id>')
 @wrap_json_error
 @profile_function(profile)
 def delete_job(realm_id, job_id):
     """Remove a job from a realm"""
-    realm = realms.get(realm_id)
-    realm.remove_job(job_id)
+    _del_job(realm_id, job_id)
     return {}
 
 
@@ -90,6 +95,11 @@ def delete_tagged_jobs(realm_id, tag_id):
     realm.remove_tagged_jobs(tag_id)
     return {}
 
+def _add_job(realm_id, job_id, queue_id, job):
+    data = job.get('data', None)
+    tags = job.get('tags', [])
+    realm = realms.get(realm_id)
+    realm.add(job_id, queue_id, data, tags=tags)
 
 @bottle.put('/<realm_id>/job/<job_id>')
 @wrap_json_error
@@ -110,11 +120,7 @@ def add_job(realm_id, job_id):
                         exception='ValueError',
                         message='Require json object in request body')
     try:
-        tags = body.get('tags', [])
-        queue_id = body['queue_id']
-        data = body.get('data', None)
-        realm = realms.get(realm_id)
-        realm.add(job_id, queue_id, data, tags=tags)
+        _add_job(realm_id, job_id, body['queue_id'], body)
     except KeyError:
         raise JSONError(client.BAD_REQUEST,
                         exception='KeyError',
@@ -122,28 +128,22 @@ def add_job(realm_id, job_id):
     return {}
 
 
-@bottle.post('/<realm_id>/job')
+@bottle.post('/<realm_id>/jobs')
 @wrap_json_error
 @profile_function(profile)
-def post_multiple_jobs(realm_id):
+def realm_bulk_add_jobs(realm_id):
     """Multiple job post
 
     body contains jobs=[job, job, job, ...]
             where job={job_id, queue_id, data=None, tags=[]}
 
     """
-    #validate input
     try:
         body = json.loads(request.body.read())
         try:
             jobs = body['jobs']
-            realm = realms.get(realm_id)
             for job in jobs:
-                job_id = job['job_id']
-                queue_id = job['queue_id']
-                data = job.get('data', None)
-                tags = job.get('tags', [])
-                realm.add(job_id, queue_id, data, tags=tags)
+                _add_job(realm_id, job['job_id'], job['queue_id'], job)
         except KeyError:
             raise JSONError(client.BAD_REQUEST,
                             exception='KeyError',
@@ -153,6 +153,73 @@ def post_multiple_jobs(realm_id):
                         exception='ValueError',
                         message='Require json object in request body')
     return {}
+
+
+@bottle.post('/jobs')
+@wrap_json_error
+@profile_function(profile)
+def realms_bulk_add_jobs():
+    """Multiple job post across multiple realms
+
+    body contains jobs=[{realm_id, job_id, queue_id, data, tags)}, ...]
+    """
+    try:
+        body = json.loads(request.body.read())
+        try:
+            jobs = body['jobs']
+            for job in jobs:
+                _add_job(job['realm_id'], job['job_id'], job['queue_id'], job)
+        except KeyError:
+            raise JSONError(client.BAD_REQUEST,
+                            exception='KeyError',
+                            message='Require queue_id & data')
+    except ValueError:
+        raise JSONError(client.BAD_REQUEST,
+                        exception='ValueError',
+                        message='Require json object in request body')
+    return {}
+
+
+@bottle.delete('/<realm_id>/jobs')
+@wrap_json_error
+@profile_function(profile)
+def realm_bulk_del_jobs(realm_id):
+    """Multiple job post
+
+    body contains jobs=[job, job, job, ...]
+            where job={job_id, queue_id, data=None, tags=[]}
+    """
+    try:
+        body = json.loads(request.body.read())
+        jobs = body['jobs']
+        for job_id in jobs:
+            _del_job(realm_id, job_id)
+    except ValueError:
+        raise JSONError(client.BAD_REQUEST,
+                        exception='ValueError',
+                        message='Require json object in request body')
+    return {}
+
+
+@bottle.delete('/jobs')
+@wrap_json_error
+@profile_function(profile)
+def realms_bulk_del_jobs():
+    """Multiple job delete across multiple realms
+
+    body contains jobs=[(realm_id, job_id), ...]
+    """
+    try:
+        body = json.loads(request.body.read())
+        jobs = body['jobs']
+        for realm_id, job_id in jobs:
+            _del_job(realm_id, job_id)
+    except ValueError:
+        raise JSONError(client.BAD_REQUEST,
+                        exception='ValueError',
+                        message='Require json object in request body')
+    return {}
+
 
 
 @bottle.get('/<realm_id>/job/<job_id>')
