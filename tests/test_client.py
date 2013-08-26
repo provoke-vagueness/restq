@@ -54,6 +54,7 @@ class Requester():
 
     @hooker
     def get(self, *a, **k): 
+        k['expect_errors'] = '*'
         return self.app.get(*a, **k)
 
 

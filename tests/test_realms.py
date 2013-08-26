@@ -103,9 +103,8 @@ class TestRealms(TestRealmsBase):
         self.assertEqual(len(status['queues']), 2)
         self.assertEqual(status['total_jobs'], 1)
         self.assertEqual(status['total_tags'], 2)
-
-        self.assertEqual(realm.get_tag_status('project 1')['count'], None)
         self.assertEqual(realm.get_tag_status('project 2')['count'], 1)
+        self.assertRaises(KeyError, realm.get_tag_status, 'project 1')
 
     def test_get_jobs(self):
         """get the state of a job"""
@@ -122,6 +121,7 @@ class TestRealms(TestRealmsBase):
     def test_pull(self):
         """pull data test"""
         realm = self.realms.get('test')
+        realm.set_default_lease_time(1)
         realm.add("job0", "q0", 'h')
         realm.add("job1", "q0", None)
         realm.add("job2", "q0", 443434)
@@ -138,7 +138,7 @@ class TestRealms(TestRealmsBase):
 
         #now that the least time has expired, lets make sure we can check out 
         # the realm once again
-        time.sleep(1)        
+        time.sleep(1.5)        
         realmer = realm.pull(4)
         realmer = dict(realmer)
         self.assertEqual(len(realmer), 4)
@@ -151,7 +151,7 @@ class TestRealms(TestRealmsBase):
         #make sure we can checkout one job, wait until it will be 
         # checked back in, but when we checkout the next job, we should 
         # increment to the next job in the queue
-        time.sleep(1)        
+        time.sleep(1.5)        
         realmer = realm.pull(1)
         realmer = dict(realmer)
         self.assertEqual(realmer["job0"][1], 'h')

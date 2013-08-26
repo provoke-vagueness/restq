@@ -12,10 +12,10 @@ from restq import config
 
 
 class BaseClient(object):
+    __slots__ = ('requester',)
+
     def __init__(self, requester=requests):
         self.requester = requester
-        self._bulk_add_jobs = []
-        self._bulk_del_jobs = []
 
     def request(self, rtype, *args, **kwargs):
         func = getattr(self.requester, rtype)
@@ -42,49 +42,39 @@ class BaseClient(object):
             raise Exception("Failed to decode response after a 200 response")
         return out
 
-    def bulk_remove(self, realm_id, job_id):
-        """bulk delete 
+    def bulk_remove(self, jobs):
+        """bulk remove 
 
-        Note: once you have added the jobs through this interface, you are 
-            required to call bulk_flush to transmit the request.
+        jobs = [(realm_id, job_id), ...]
+
         """
-        self._bulk_del_jobs.append((realm_id, job_id))
+        uri= "%s/jobs" % (self._uri)
+        body = {'jobs': jobs}
+        body = json.dumps(body)
+        self.request('delete', uri, data=body)
 
-    def bulk_add(self, realm_id, job_id, queue_id, data=None, tags=None):
+    def bulk_add(self, jobs):
         """add jobs in bulk.
         
-        Note: once you have added jobs through this interface, you are
-            required to call bulk_flush to transmit the jobs in bulk to the
-            web service.
-        """
-        job = {'realm_id':realm_id, 'job_id':job_id, 'queue_id': queue_id}
-        if data is not None:
-            job['data'] = data
-        if tags is not None:
-            job['tags'] = tags
-        self._bulk_add_jobs.append(job)
+        jobs = [job, ...]
 
-    def bulk_flush(self):
-        """flush jobs through to the web service that have been queued up using
-        the bulk_add function"""
-        if self._bulk_add_jobs:
-            uri = "%s/jobs" % (self._uri)
-            body = {'jobs': self._bulk_add_jobs}
-            body = json.dumps(body)
-            self.request('post', uri, data=body)
-            self._bulk_add_jobs = []
-        if self._bulk_del_jobs:
-            uri= "%s/jobs" % (self._uri)
-            body = {'jobs': self._bulk_del_jobs}
-            body = json.dumps(body)
-            self.request('delete', uri, data=body)
-            self._bulk_del_jobs = []
+        Where job is a dictionary of key:values
+            {realm_id:
+             job_id:
+             queue_id:
+             # Optional tag values
+             data:
+             tags:}
+        """
+        uri = "%s/jobs" % (self._uri)
+        body = {'jobs': jobs}
+        body = json.dumps(body)
+        self.request('post', uri, data=body)
 
 
 class Realm(BaseClient):
     def __init__(self, name, uri, requester=requests):
         BaseClient.__init__(self, requester)
-        self.requester = requester
         self._name = name
         self._uri = "%s/%s" % (uri, name)
 
@@ -137,11 +127,14 @@ class Realm(BaseClient):
         self.request('put', uri, data=body)
     add.__doc__ = realms.Realm.add.__doc__ 
     
-    def bulk_add(self, job_id, queue_id, data=None, tags=None):
-        super(Realm, self).bulk_add(self._name, job_id, queue_id, data, tags)
+    def bulk_add(self, jobs):
+        for job in jobs.values():
+            job['realm_id'] = self._name
+        super(Realm, self).bulk_add(jobs)
 
-    def bulk_remove(self, job_id):
-        super(Realm, self).bulk_remove(self._name, job_id)
+    def bulk_remove(self, jobs):
+        jobs = [(self._name, job) for job in jobs]
+        super(Realm, self).bulk_remove(jobs)
 
     def pull(self, count=None):
         if count is None:
@@ -170,26 +163,25 @@ class Realms(MutableMapping, BaseClient):
     __slots__ = ('_reserved', 
                  '_uri', 
                  '_realms', 
-                 'requester')
+                 '_requester')
 
-    def __init__(self, uri=None,
-                       requester=requests):
+    def __init__(self, uri=None, requester=requests):
         BaseClient.__init__(self, requester)
         if uri is None:
             uri = config.client['uri']
         if uri.endswith('/'):
             uri = uri[:-1]
         self._realms = None
-        self.requester = requester
+        self._requester = requester
         self._uri = uri
 
     @property
     def realms(self):
         if self._realms is None:
             self._realms = {}
-            realms = self.requester.get(self._uri).json()
+            realms = self.request('get', self._uri)
             for k in realms:
-                self._realms[k] = Realm(k, self._uri, requester=self.requester)
+                self._realms[k] = Realm(k, self._uri, requester=self._requester)
         return self._realms
 
     def __dir__(self):
@@ -221,7 +213,7 @@ class Realms(MutableMapping, BaseClient):
             return super(Realms, self).__getattribute__(k)
         realm = self.realms.get(k, None)
         if realm is None:
-            realm = Realm(k, self._uri, requester=self.requester)
+            realm = Realm(k, self._uri, requester=self._requester)
             self.realms[k] = realm
         return realm
 
