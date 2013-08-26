@@ -238,6 +238,14 @@ default realm. ::
   > done
 
 
+Contributions
+=============
+
+Contributions to restq:
+
+ * Stephen Tonkin [sptonkin@outlook.com]
+
+
 Issues
 ======
 
@@ -270,13 +278,6 @@ version 0.0.1 (10/04/2013)
 
  * pre life
 
-
-Contributions
-=============
-
-Contributions to restq:
-
- * [sptonkin@outlook.com]
 
  
 .. _github.com: https://github.com/provoke-vagueness/restq
