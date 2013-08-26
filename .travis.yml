@@ -5,7 +5,9 @@ install:
   - python setup.py install 
   - pip install webtest
   - python -m tests.test_client 
-script: python setup.py test
+script: 
+  - coverage run setup.py test
+  - coverage report --show-missing
 notifications:
     email: 
       recipients:

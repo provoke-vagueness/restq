@@ -37,7 +37,10 @@ the github `restq/issues`_ page.
 Project hosting provided by `github.com`_.
 
 
-[mjdorma+restq@gmail.com] and [sptonkin@outlook.com]
+|pypi_version| |build_status| |coverage|
+
+
+[mjdorma+restq@gmail.com] 
 
 
 Install and run
@@ -246,6 +249,10 @@ with GitHub's issues system.
 Change log
 ==========
 
+version 0.1.2 (26/08/2013)
+ 
+ * bulk add and removal
+ 
 version 0.1.0 (18/07/2013)
 
  * implemented cli controls. 
@@ -264,8 +271,24 @@ version 0.0.1 (10/04/2013)
  * pre life
 
 
+Contributions
+=============
+
+Contributions to restq:
+
+ * [sptonkin@outlook.com]
+
+ 
 .. _github.com: https://github.com/provoke-vagueness/restq
 .. _PyPi: http://pypi.python.org/pypi/restq
 .. _restq/issues: https://github.com/provoke-vagueness/restq/issues
+.. |coverage| image:: https://coveralls.io/repos/provoke-vagueness/restq/badge.png?branch=master
+   :target: https://coveralls.io/r/provoke-vagueness/restq?branch=master
+   :alt: Latest PyPI version
+.. |pypi_version| image:: https://pypip.in/v/restq/badge.png
+   :target: https://crate.io/packages/restq/
+   :alt: Latest PyPI version
 .. |build_status| image:: https://secure.travis-ci.org/provoke-vagueness/restq.png?branch=master
    :target: http://travis-ci.org/#!/provoke-vagueness/restq
+
+
