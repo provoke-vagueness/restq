@@ -1,0 +1,7 @@
+bottle
+coverage
+coveralls
+pip
+mock
+sphinx
+webtest
