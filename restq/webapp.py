@@ -228,6 +228,16 @@ def realms_bulk_del_jobs():
     return {}
 
 
+@bottle.get('/<realm_id>/job/<job_id>/from_q/<from_q>/to_q/<to_q>')
+@wrap_json_error
+@profile_function(profile)
+def move_job(realm_id, job_id, from_q, to_q):
+    """Move the job from one queue to another"""
+    realm = realms.get(realm_id)
+    realm.move_job(job_id, from_q, to_q)
+    return {}
+
+
 @bottle.get('/<realm_id>/job/<job_id>')
 @wrap_json_error
 @profile_function(profile)
