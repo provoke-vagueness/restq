@@ -75,25 +75,35 @@ class Realm:
         self.realm_config_path = p
         self._load_config()
 
+    def _remove_from_tags(self, job_id):
+        """Remove jobs from tags"""
+        job = self.jobs.get(job_id, None)
+        if job is not None:
+            for tag_id in job[JOB_TAGS]:
+                tag = self.tags[tag_id]
+                tag.remove(job_id)
+                if not tag:
+                    self.tags.pop(tag_id)
+
+    def _remove_from_queues(self, job_id):
+        """Remove job from queues"""
+        job = self.jobs.get(job_id, None)
+        if job is not None:
+            for queue_id in job[JOB_QUEUES]:
+                queue = self.queues[queue_id]
+                queue.pop(job_id)
+
     @serialise
     def remove_job(self, job_id):
         """remove job_id from the system"""
         self._remove_job(job_id)
     def _remove_job(self, job_id):
-        # remove the job
-        job = self.jobs.pop(job_id)
-
         # remove from queues
-        for queue_id in job[JOB_QUEUES]:
-            queue = self.queues[queue_id]
-            queue.pop(job_id)
-
+        self._remove_from_queues(job_id)
         # remove from tags
-        for tag_id in job[JOB_TAGS]:
-            tag = self.tags[tag_id]
-            tag.remove(job_id)
-            if not tag:
-                self.tags.pop(tag_id)
+        self._remove_from_tags(job_id)
+        # remove the job
+        self.jobs.pop(job_id)
 
     @serialise
     def remove_tagged_jobs(self, tag_id):
@@ -244,6 +254,32 @@ class Realm:
                     iterator.revert()
                     break
         return jobs
+
+    @serialise
+    def clear_queue(self, queue_id):
+        """remove all jobs from the given queue"""
+        queue = self.queues.get(queue_id, None)
+        if queue is None:
+            raise ValueError("Queue '%s' does not exist" % queue_id)
+
+        # get a list of all jobs in this queue so we can remove the queue
+        # references from them afterwards. We do this first so we can clear the
+        # queue in one go and prevent dequeueing during iteration
+        job_ids = [job_id for job_id in queue]
+
+        # clear the queue, then remove the queue references from all jobs
+        queue.clear()
+        for job_id in job_ids:
+            job = self.jobs.get(job_id, None)
+            if job is None:
+                # Job doesn't exist any more, skip
+                continue
+            queues_job_in = job[JOB_QUEUES]
+            queues_job_in.discard(queue_id)
+            if len(queues_job_in) == 0:
+                # job no longer in any queues, lets remove it completely
+                self._remove_from_tags(job_id)
+                self.jobs.pop(job_id)
 
     @property
     def status(self):

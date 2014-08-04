@@ -121,6 +121,11 @@ class Realm(BaseClient):
         self.request('post', uri, data=json.dumps(data))
     set_queue_lease_time.__doc__ = realms.Realm.set_queue_lease_time.__doc__
 
+    def clear_queue(self, queue_id):
+        uri = "%s/queues/%s/clear" % (self._uri, queue_id)
+        self.request('get', uri)
+    clear_queue.__doc__ = realms.Realm.clear_queue.__doc__
+
     def add(self, job_id, queue_id, data=None, tags=None):
         uri = "%s/job/%s" % (self._uri, job_id)
         body = {'queue_id': queue_id}

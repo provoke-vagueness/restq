@@ -279,6 +279,16 @@ def pull_jobs(realm_id):
     return job
 
 
+@bottle.get('/<realm_id>/queues/<queue_id>/clear')
+@wrap_json_error
+@profile_function(profile)
+def clear_queue(realm_id, queue_id):
+    """remove all jobs from the given queue"""
+    realm = realms.get(realm_id)
+    realm.clear_queue(queue_id)
+    return {}
+
+
 # Get the status of the realm
 @bottle.get('/<realm_id>/status')
 @wrap_json_error

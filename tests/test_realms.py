@@ -195,6 +195,30 @@ class TestRealms(TestRealmsBase):
         realm.pull(5)
         self.assertRaises(ValueError, realm.move_job, "job3", "q1", "q2")
 
+    def test_clear_queue(self):
+        """clear queue test"""
+        realm = self.realms.get('test')
+        realm.set_default_lease_time(1)
+        realm.add("job0", "q0", 'h')
+        realm.add("job1", "q0", None)
+        realm.add("job2", "q0", 443434)
+        realm.add("job3", "q1", 3343.343434)
+        realm.add("job1", "q1", None)
+
+        # make sure clear only clears the one queue
+        realm.clear_queue("q0")
+        status = realm.status
+        self.assertEqual(status['queues']['q0'], 0)
+        self.assertEqual(status['queues']['q1'], 2)
+        # make sure jobs with no queues are removed
+        self.assertRaises(KeyError, realm.get_job, 'job0')
+        # make sure jobs with multiple queues are not removed
+        self.assertTrue(realm.get_job('job1'),
+                        'Job with multiple queues was removed')
+
+        # try to clear a non existent queue
+        self.assertRaises(ValueError, realm.clear_queue, "q55")
+
 
 class TestRealmsNonGeneric(TestRealmsBase):
     """Test the stuff that applies just to realm and not the
