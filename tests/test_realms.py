@@ -7,7 +7,7 @@ import sys
 if sys.version_info[0] >= 3:
     from imp import reload
 
-from restq import realms 
+from restq import realms
 
 
 class TestRealmsBase(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestRealms(TestRealmsBase):
         self.assertEqual(len(status['queues']), 1)
         self.assertEqual(status['total_jobs'], 2)
         self.assertEqual(status['total_tags'], 2)
- 
+
         realm.add(2, 'q0', 443434, tags=['project 1', 'task 2', 'odd job'])
         status = realm.status
         self.assertEqual(len(status['queues']), 1)
@@ -57,7 +57,6 @@ class TestRealms(TestRealmsBase):
         self.assertEqual(status['total_jobs'], 4)
         self.assertEqual(status['total_tags'], 5)
 
-
     def test_remove_job(self):
         """remove a job"""
         realm = self.realms.get('test')
@@ -72,7 +71,6 @@ class TestRealms(TestRealmsBase):
         self.assertEqual(len(status['queues']), 2)
         self.assertEqual(status['total_jobs'], 1)
         self.assertEqual(status['total_tags'], 3)
-
 
     def test_remove_tagged_task(self):
         """remove a task"""
@@ -136,9 +134,9 @@ class TestRealms(TestRealmsBase):
         realmer = realm.pull(4)
         self.assertFalse(realmer)
 
-        #now that the least time has expired, lets make sure we can check out 
+        # now that the least time has expired, lets make sure we can check out
         # the realm once again
-        time.sleep(1.5)        
+        time.sleep(1.5)
         realmer = realm.pull(4)
         realmer = dict(realmer)
         self.assertEqual(len(realmer), 4)
@@ -148,17 +146,82 @@ class TestRealms(TestRealmsBase):
         realmer = realm.pull(4)
         self.assertFalse(realmer)
 
-        #make sure we can checkout one job, wait until it will be 
-        # checked back in, but when we checkout the next job, we should 
+        # make sure we can checkout one job, wait until it will be
+        # checked back in, but when we checkout the next job, we should
         # increment to the next job in the queue
-        time.sleep(1.5)        
+        time.sleep(1.5)
         realmer = realm.pull(1)
         realmer = dict(realmer)
         self.assertEqual(realmer["job0"][1], 'h')
 
+    def test_move_job(self):
+        """move job test"""
+        realm = self.realms.get('test')
+        realm.set_default_lease_time(1)
+        realm.add("job0", "q0", 'h')
+        realm.add("job1", "q0", None)
+        realm.add("job2", "q0", 443434)
+        realm.add("job3", "q1", 3343.343434)
+        realm.add("job1", "q1", None)
+
+        # try to move a job that has not been checked out
+        realm.move_job("job0", "q0", "q1")
+        status = realm.status
+        self.assertEqual(status['queues']['q0'], 2)
+        self.assertEqual(status['queues']['q1'], 3)
+
+        # try to move a job to a new queue
+        realm.move_job("job0", "q1", "q6")
+        status = realm.status
+        self.assertEqual(status['queues']['q1'], 2)
+        self.assertEqual(status['queues']['q6'], 1)
+
+        # try to move a job into a queue it is already in
+        realm.move_job("job1", "q1", "q0")
+        status = realm.status
+        self.assertEqual(status['queues']['q1'], 1)
+        self.assertEqual(status['queues']['q0'], 2)
+
+        # try to move a job from a non-existent queue
+        self.assertRaises(ValueError, realm.move_job, "job0", "q9", "q0")
+
+        # try to move a job that doesn't exist
+        self.assertRaises(ValueError, realm.move_job, "job9", "q1", "q0")
+
+        # try to move a job from the wrong queue
+        self.assertRaises(ValueError, realm.move_job, "job3", "q0", "q2")
+
+        # try to move a job that has been checked out already
+        realm.pull(5)
+        self.assertRaises(ValueError, realm.move_job, "job3", "q1", "q2")
+
+    def test_clear_queue(self):
+        """clear queue test"""
+        realm = self.realms.get('test')
+        realm.set_default_lease_time(1)
+        realm.add("job0", "q0", 'h')
+        realm.add("job1", "q0", None)
+        realm.add("job2", "q0", 443434)
+        realm.add("job3", "q1", 3343.343434)
+        realm.add("job1", "q1", None)
+
+        # make sure clear only clears the one queue
+        realm.clear_queue("q0")
+        status = realm.status
+        self.assertEqual(status['queues']['q0'], 0)
+        self.assertEqual(status['queues']['q1'], 2)
+        # make sure jobs with no queues are removed
+        self.assertRaises(KeyError, realm.get_job, 'job0')
+        # make sure jobs with multiple queues are not removed
+        self.assertTrue(realm.get_job('job1'),
+                        'Job with multiple queues was removed')
+
+        # try to clear a non existent queue
+        self.assertRaises(ValueError, realm.clear_queue, "q55")
+
 
 class TestRealmsNonGeneric(TestRealmsBase):
-    """Test the stuff that applies just to realm and not the 
+    """Test the stuff that applies just to realm and not the
     full webapp<->client<->realm interaction"""
 
     def test_add_diff_data(self):
@@ -167,4 +230,3 @@ class TestRealmsNonGeneric(TestRealmsBase):
         realm.add("job 1", 'q0', 'data one')
         self.assertRaises(ValueError,
                 realm.add, "job 1", "q0", "data broke")
-

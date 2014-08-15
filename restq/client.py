@@ -5,7 +5,7 @@ from collections import MutableMapping
 if sys.version_info[0] < 3:
     builtins = __builtins__
 else:
-    import builtins 
+    import builtins
 
 from restq import realms
 from restq import config
@@ -43,19 +43,19 @@ class BaseClient(object):
         return out
 
     def bulk_remove(self, jobs):
-        """bulk remove 
+        """bulk remove
 
         jobs = [(realm_id, job_id), ...]
 
         """
-        uri= "%s/jobs" % (self._uri)
+        uri = "%s/jobs" % (self._uri)
         body = {'jobs': jobs}
         body = json.dumps(body)
         self.request('delete', uri, data=body)
 
     def bulk_add(self, jobs):
         """add jobs in bulk.
-        
+
         jobs = [job, ...]
 
         Where job is a dictionary of key:values
@@ -104,29 +104,39 @@ class Realm(BaseClient):
         return self.request('get', uri)
     get_tagged_jobs.__doc__ = realms.Realm.get_tagged_jobs.__doc__
 
+    def move_job(self, job_id, from_q, to_q):
+        uri = "%s/job/%s/from_q/%s/to_q/%s" % (self._uri, job_id, from_q, to_q)
+        return self.request('get', uri)
+    move_job.__doc__ = realms.Realm.move_job.__doc__
+
     def set_default_lease_time(self, lease_time):
         uri = "%s/config" % (self._uri)
-        data = {'default_lease_time':lease_time}
+        data = {'default_lease_time': lease_time}
         self.request('post', uri, data=json.dumps(data))
     set_default_lease_time.__doc__ = realms.Realm.set_default_lease_time.__doc__
 
     def set_queue_lease_time(self, queue_id, lease_time):
         uri = "%s/config" % (self._uri)
-        data = {'queue_lease_time':[queue_id, lease_time]}
+        data = {'queue_lease_time': [queue_id, lease_time]}
         self.request('post', uri, data=json.dumps(data))
     set_queue_lease_time.__doc__ = realms.Realm.set_queue_lease_time.__doc__
 
+    def clear_queue(self, queue_id):
+        uri = "%s/queues/%s/clear" % (self._uri, queue_id)
+        self.request('get', uri)
+    clear_queue.__doc__ = realms.Realm.clear_queue.__doc__
+
     def add(self, job_id, queue_id, data=None, tags=None):
         uri = "%s/job/%s" % (self._uri, job_id)
-        body = {'queue_id':queue_id}
+        body = {'queue_id': queue_id}
         if data is not None:
             body['data'] = data
         if tags is not None:
             body['tags'] = tags
         body = json.dumps(body)
         self.request('put', uri, data=body)
-    add.__doc__ = realms.Realm.add.__doc__ 
-    
+    add.__doc__ = realms.Realm.add.__doc__
+
     def bulk_add(self, jobs):
         for job in jobs.values():
             job['realm_id'] = self._name
@@ -160,9 +170,9 @@ class Realm(BaseClient):
 
 
 class Realms(MutableMapping, BaseClient):
-    __slots__ = ('_reserved', 
-                 '_uri', 
-                 '_realms', 
+    __slots__ = ('_reserved',
+                 '_uri',
+                 '_realms',
                  '_requester')
 
     def __init__(self, uri=None, requester=requests):
@@ -218,4 +228,3 @@ class Realms(MutableMapping, BaseClient):
         return realm
 
 Realms._reserved = set(dir(Realms))
-

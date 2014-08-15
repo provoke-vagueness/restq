@@ -6,7 +6,7 @@ import inspect
 import functools
 if sys.version_info[0] < 3:
     import httplib as client
-else: 
+else:
     from http import client
 import time
 import sys
@@ -16,7 +16,7 @@ import bottle
 from bottle import request
 bottle.BaseRequest.MEMFILE_MAX = 1600000000
 
-from restq import realms 
+from restq import realms
 from restq import config
 
 
@@ -31,8 +31,11 @@ class JSONError(bottle.HTTPResponse):
         body = json.dumps({'error': status,
                             'exception': exception,
                             'message': message})
-        bottle.HTTPResponse.__init__(self, status=status, 
-                header={'content-type':'application/json'}, body=body)
+        bottle.HTTPResponse.__init__(\
+                                self,
+                                status=status,
+                                headers={'Content-Type': 'application/json'},
+                                body=body)
 
 
 def wrap_json_error(f):
@@ -41,7 +44,7 @@ def wrap_json_error(f):
         try:
             return f(*a, **k)
         except JSONError:
-            raise 
+            raise
         except Exception as exc:
             raise JSONError(client.INTERNAL_SERVER_ERROR,
                     exception=exc,
@@ -49,7 +52,7 @@ def wrap_json_error(f):
     return wrapper
 
 
-def profile_function(profile_dict): 
+def profile_function(profile_dict):
     def decorator(f):
         p = dict(call_count=0, max_time=-1, min_time=9999, total_time=0)
         profile_dict[f.func_name] = p
@@ -70,12 +73,14 @@ def profile_function(profile_dict):
 
 profile = dict()
 
+
 def _del_job(realm_id, job_id):
     realm = realms.get(realm_id)
     try:
         realm.remove_job(job_id)
     except KeyError:
         pass
+
 
 @bottle.delete('/<realm_id>/job/<job_id>')
 @wrap_json_error
@@ -95,19 +100,21 @@ def delete_tagged_jobs(realm_id, tag_id):
     realm.remove_tagged_jobs(tag_id)
     return {}
 
+
 def _add_job(realm_id, job_id, queue_id, job):
     data = job.get('data', None)
     tags = job.get('tags', [])
     realm = realms.get(realm_id)
     realm.add(job_id, queue_id, data, tags=tags)
 
+
 @bottle.put('/<realm_id>/job/<job_id>')
 @wrap_json_error
 @profile_function(profile)
 def add_job(realm_id, job_id):
     """Put a job into a queue
-    JSON requires:  
-        queue_id   -  
+    JSON requires:
+        queue_id   -
     Optional fields:
         data - input type='file' - data returned on GET job request
              - Max size data is JOB_DATA_MAX_SIZE
@@ -221,6 +228,15 @@ def realms_bulk_del_jobs():
     return {}
 
 
+@bottle.get('/<realm_id>/job/<job_id>/from_q/<from_q>/to_q/<to_q>')
+@wrap_json_error
+@profile_function(profile)
+def move_job(realm_id, job_id, from_q, to_q):
+    """Move the job from one queue to another"""
+    realm = realms.get(realm_id)
+    realm.move_job(job_id, from_q, to_q)
+    return {}
+
 
 @bottle.get('/<realm_id>/job/<job_id>')
 @wrap_json_error
@@ -263,6 +279,16 @@ def pull_jobs(realm_id):
     return job
 
 
+@bottle.get('/<realm_id>/queues/<queue_id>/clear')
+@wrap_json_error
+@profile_function(profile)
+def clear_queue(realm_id, queue_id):
+    """remove all jobs from the given queue"""
+    realm = realms.get(realm_id)
+    realm.clear_queue(queue_id)
+    return {}
+
+
 # Get the status of the realm
 @bottle.get('/<realm_id>/status')
 @wrap_json_error
@@ -294,11 +320,11 @@ def update_realm_config(realm_id):
                     exception='TypeError',
                     message="default_lease_time not int")
         realm.set_default_lease_time(lease_time)
-    
+
     queue_lease_time = queue_lease_time = body.get('queue_lease_time', None)
     if queue_lease_time is not None:
         try:
-            queue_id, lease_time = queue_lease_time 
+            queue_id, lease_time = queue_lease_time
         except (ValueError, TypeError) as err:
             raise JSONError(client.BAD_REQUEST,
                     exception='ValueError',
@@ -323,7 +349,7 @@ def delete_realm(realm_id):
 @wrap_json_error
 @profile_function(profile)
 def webapp_performance():
-    """return the performance of the webapp""" 
+    """return the performance of the webapp"""
     return profile
 
 
@@ -331,7 +357,7 @@ def webapp_performance():
 @wrap_json_error
 @profile_function(profile)
 def realms_status():
-    """return all of the realms and their statuses""" 
+    """return all of the realms and their statuses"""
     return realms.get_status()
 
 
@@ -344,4 +370,3 @@ def run():
                          port=config.webapp['port'],
                          server=config.webapp['server'])
     bottle.run(app=app, **bottle_kwargs)
-
