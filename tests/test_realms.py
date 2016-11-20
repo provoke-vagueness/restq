@@ -219,6 +219,20 @@ class TestRealms(TestRealmsBase):
         # try to clear a non existent queue
         self.assertRaises(ValueError, realm.clear_queue, "q55")
 
+    def test_unsafe_iter(self):
+        """
+        Attempt to trigger an iteration error when iterating
+        a queue that is modified in a particular sequence.
+        """
+        realm = self.realms.get('test')
+        realm.add(101, 1)
+        realm.add(102, 1)
+        realm.pull(1)
+        realm.remove_job(101)
+        realm.remove_job(102)
+        realm.add(103, 1)
+        jobs = realm.pull(1)
+
 
 class TestRealmsNonGeneric(TestRealmsBase):
     """Test the stuff that applies just to realm and not the
