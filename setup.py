@@ -8,7 +8,8 @@ import sys
 
 install_requires = ["bottle>=0.11",
                     "pyyaml>=0.0",
-                    "requests>=1.1.0"]
+                    "requests>=1.1.0",
+                    "prometheus-client"]
 
 def load_version(filename='./restq/version.py'):
     """Parse a __version__ number from a source file"""
