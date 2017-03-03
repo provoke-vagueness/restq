@@ -314,17 +314,49 @@ def get_tag_status(realm_id, tag_id):
 
 @bottle.get('/<realm_id>/job')
 @wrap_json_error
+@request_timer('/realm/job', 'get')
 @profile_function(profile)
-def pull_jobs(realm_id):
+def pull_realm_jobs(realm_id):
     """pull the next set of jobs from the realm"""
     realm = realms.get(realm_id)
     count = request.GET.get('count', default=1, type=int)
-    job = realm.pull(count=count)
+    max_queue = request.GET.get('max-queue')
+    job = realm.pull(count=count, max_queue=max_queue)
     return job
 
+@bottle.get('/job')
+@wrap_json_error
+@request_timer('/job', 'get')
+@profile_function(profile)
+def pull_jobs():
+    """pull next priority jobs across all/subset of realms
+
+    This makes the assumption that queue names between realms are
+    sortable/comparable and any job_id's used are unique across realms.
+
+    No effort is made to pull based on insert order across realms/queues
+    it is only guaranteed to prioritise based on queue names within realms.
+
+    Optional query params:
+    count - number of jobs to pull (default: 1)
+    realms - comma-separated list of realm names to pull from (default: all)
+
+    return: {
+        'job_id1': ['realm_id', 'queue', 'data'],
+        'job_id2': ['realm_id', 'queue', 'data'],
+        ...
+    }
+    """
+    rlms = [r for r in request.GET.get('realms', '').split(',') if r]
+    count = request.GET.get('count', default=1, type=int)
+    if not rlms:
+        rlms = [r.realm_id for r in realms.current()]
+
+    return realms.pull(realms=rlms, count=count)
 
 @bottle.get('/<realm_id>/queues/<queue_id>/clear')
 @wrap_json_error
+@request_timer('/realm/status', 'get')
 @profile_function(profile)
 def clear_queue(realm_id, queue_id):
     """remove all jobs from the given queue"""
