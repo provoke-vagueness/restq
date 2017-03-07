@@ -1,11 +1,13 @@
-import time
-import yaml
-from collections import OrderedDict
-from threading import Lock
-from functools import wraps
 import os
 import pprint
 import sys
+import time
+import yaml
+
+from collections import OrderedDict
+from functools import wraps
+from itertools import takewhile
+from threading import Lock
 
 from restq import config
 
@@ -194,13 +196,14 @@ class Realm:
             tag.add(job_id)
 
     @serialise
-    def pull(self, count):
+    def pull(self, count, max_queue=None):
         """pull out a max of count jobs"""
         queues_ids = [k for k in self.queues]
         queues_ids.sort()
         jobs = {}
         ctime = time.time()
-        for queue_id in queues_ids:
+        pred = lambda x: max_queue is None or x <= max_queue
+        for queue_id in takewhile(pred, queues_ids):
             # add this job to the jobs result dict and update its lease time
             for job_id, dequeue_time in dictiter(self.queues[queue_id]):
 
@@ -237,6 +240,10 @@ class Realm:
                 # job no longer in any queues, lets remove it completely
                 self._remove_from_tags(job_id)
                 self.jobs.pop(job_id)
+
+    def queue_names(self):
+        """list of current queue names"""
+        return self.queues.keys()
 
     @property
     def status(self):
@@ -309,6 +316,8 @@ def get(realm_id):
         _realms[realm_id] = realm
     return realm
 
+def current():
+    return _realms.values()
 
 def delete(realm_id):
     """delete the realm at realm_id and remove the associated config file"""
@@ -344,3 +353,23 @@ def get_status():
     for realm_id, realm in dictiter(_realms):
         status[realm_id] = realm.status
     return status
+
+def pull(count, realms=None):
+    """pull next priority jobs across multiple realms"""
+    if realms is None:
+        realms = current()
+    else:
+        realms = [get(r) for r in realms]
+    queues = list(set(sum([r.queue_names() for r in realms], [])))
+    queues.sort()
+    jobs = {}
+    for q in queues:
+        for r in realms:
+            for job_id, val in \
+                r.pull(max_queue=q, count=count-len(jobs)).iteritems():
+                # assumes job_id will be globally unique
+                # job_id -> realm, priority, data
+                jobs[job_id] = r.realm_id, val[0], val[1]
+            if len(jobs) >= count:
+                return jobs
+    return jobs

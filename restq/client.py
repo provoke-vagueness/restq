@@ -71,6 +71,17 @@ class BaseClient(object):
         body = json.dumps(body)
         self.request('post', uri, data=body)
 
+    def pull(self, count=None, realms=None):
+        """pull jobs across multiple realms.
+
+        realms = [realm_name, ...]
+        """
+        if count is None:
+            count = config.client['count']
+        uri = "%s/job?count=%s" % (self._uri, count)
+        if realms is not None:
+            uri += "&realms=%s" % ','.join(realms)
+        return self.request('get', uri)
 
 class Realm(BaseClient):
     def __init__(self, name, uri, requester=requests):
@@ -146,10 +157,12 @@ class Realm(BaseClient):
         jobs = [(self._name, job) for job in jobs]
         super(Realm, self).bulk_remove(jobs)
 
-    def pull(self, count=None):
+    def pull(self, count=None, max_queue=None):
         if count is None:
             count = config.client['count']
         uri = "%s/job?count=%s" % (self._uri, count)
+        if max_queue is not None:
+            uri += "&max-queue=%s" % max_queue
         return self.request('get', uri)
     pull.__doc__ = realms.Realm.pull.__doc__
 

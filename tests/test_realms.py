@@ -219,6 +219,75 @@ class TestRealms(TestRealmsBase):
         # try to clear a non existent queue
         self.assertRaises(ValueError, realm.clear_queue, "q55")
 
+    def test_pull_priority(self):
+        """
+        Pull jobs up to a max queue priority.
+        """
+        realm = self.realms.get('test')
+        realm.add("job0", "q0", 'h')
+        realm.add("job1", "q0", None)
+        realm.add("job2", "q0", 443434)
+        realm.add("job3", "q1", 3343.343434)
+        realmer = realm.pull(4, max_queue="q0")
+        realmer = dict(realmer)
+        self.assertEqual(len(realmer), 3)
+        self.assertEqual(realmer["job2"][1], 443434)
+
+    def test_global_pull(self):
+        """
+        Pull jobs, in queue order, across multiple realms.
+        """
+        realm = self.realms.get('test1')
+        realm.add("job1.0", "q0", 'h')
+        realm.add("job1.1", "q1", None)
+        realm.add("job1.2", "q1", 443434)
+        realm.add("job1.3", "q1", 3343.343434)
+
+        realm = self.realms.get('test2')
+        realm.add("job2.0", "q0", 'h')
+        realm.add("job2.1", "q0", None)
+        realm.add("job2.2", "q0", 443434)
+        realm.add("job2.3", "q1", 3343.343434)
+
+        realmer = self.realms.pull(3)
+        realmer = dict(realmer)
+        print(realmer)
+        self.assertEqual(len(realmer), 3)
+        self.assertTrue("job1.0" in realmer)
+        self.assertTrue("job2.0" in realmer)
+        self.assertTrue("job2.1" in realmer)
+
+    def test_global_subset_pull(self):
+        """
+        Pull jobs, in queue order, across multiple realms.
+        """
+        realm1 = self.realms.get('test1')
+        realm1.add("job1.0", "q0", 'h')
+        realm1.add("job1.1", "q1", None)
+        realm1.add("job1.2", "q2", 443434)
+        realm1.add("job1.3", "q2", 3343.343434)
+
+        realm2 = self.realms.get('test2')
+        realm2.add("job2.0", "q0", 'h')
+        realm2.add("job2.1", "q0", None)
+        realm2.add("job2.2", "q1", 443434)
+        realm2.add("job2.3", "q1", 3343.343434)
+
+        realm3 = self.realms.get('test3')
+        realm3.add("job3.0", "q0", 'h')
+        realm3.add("job3.1", "q0", None)
+        realm3.add("job3.2", "q1", 443434)
+        realm3.add("job3.3", "q1", 3343.343434)
+
+        realmer = self.realms.pull(5, realms=['test1', 'test3'])
+        realmer = dict(realmer)
+        self.assertEqual(len(realmer), 5)
+        self.assertTrue("job1.0" in realmer)
+        self.assertTrue("job3.0" in realmer)
+        self.assertTrue("job3.1" in realmer)
+        self.assertTrue("job1.1" in realmer)
+        self.assertTrue("job3.2" in realmer)
+
     def test_unsafe_iter(self):
         """
         Attempt to trigger an iteration error when iterating

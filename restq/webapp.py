@@ -13,11 +13,46 @@ import sys
 from getopt import getopt
 
 import bottle
-from bottle import request
+from bottle import request, response
 bottle.BaseRequest.MEMFILE_MAX = 1600000000
 
-from restq import realms
+import prometheus_client
+from prometheus_client import Gauge, Summary
+
+from restq import realms 
 from restq import config
+
+# prometheus metrics state
+request_summary = Summary(
+    'restq_api_request_duration_seconds',
+    'Time spent processing api request',
+    ['resource', 'method']
+)
+request_timer = lambda *x: request_summary.labels(*x).time()
+
+job_gauge = Gauge(
+    'restq_queued_jobs',
+    'Number of jobs in restq realms/queues',
+    ['realm', 'queue']
+)
+job_gauge._samples = lambda: _get_job_stats()
+
+tag_gauge = Gauge(
+    'restq_queued_tags',
+    'Number of tags in restq realms',
+    ['realm']
+)
+tag_gauge._samples = lambda: _get_tag_stats()
+
+def _get_job_stats():
+    d = realms.get_status()
+    return  [('', {'realm': name, 'queue': str(q)}, v) \
+        for name, detail in d.items() for q, v in detail['queues'].items()]
+
+def _get_tag_stats():
+    d = realms.get_status()
+    return  [('', {'realm': name}, detail['total_tags']) \
+        for name, detail in d.items()]
 
 
 class JSONError(bottle.HTTPResponse):
@@ -84,6 +119,7 @@ def _del_job(realm_id, job_id):
 
 @bottle.delete('/<realm_id>/job/<job_id>')
 @wrap_json_error
+@request_timer('/realm/job', 'delete')
 @profile_function(profile)
 def delete_job(realm_id, job_id):
     """Remove a job from a realm"""
@@ -93,6 +129,7 @@ def delete_job(realm_id, job_id):
 
 @bottle.delete('/<realm_id>/tag/<tag_id>')
 @wrap_json_error
+@request_timer('/realm/tag', 'delete')
 @profile_function(profile)
 def delete_tagged_jobs(realm_id, tag_id):
     """Remove a tag and all of its jobs from a realm"""
@@ -110,6 +147,7 @@ def _add_job(realm_id, job_id, queue_id, job):
 
 @bottle.put('/<realm_id>/job/<job_id>')
 @wrap_json_error
+@request_timer('/realm/job', 'put')
 @profile_function(profile)
 def add_job(realm_id, job_id):
     """Put a job into a queue
@@ -137,6 +175,7 @@ def add_job(realm_id, job_id):
 
 @bottle.post('/<realm_id>/jobs')
 @wrap_json_error
+@request_timer('/realm/jobs', 'post')
 @profile_function(profile)
 def realm_bulk_add_jobs(realm_id):
     """Multiple job post
@@ -164,6 +203,7 @@ def realm_bulk_add_jobs(realm_id):
 
 @bottle.post('/jobs')
 @wrap_json_error
+@request_timer('/jobs', 'post')
 @profile_function(profile)
 def realms_bulk_add_jobs():
     """Multiple job post across multiple realms
@@ -186,9 +226,9 @@ def realms_bulk_add_jobs():
                         message='Require json object in request body')
     return {}
 
-
 @bottle.delete('/<realm_id>/jobs')
 @wrap_json_error
+@request_timer('/realm/jobs', 'delete')
 @profile_function(profile)
 def realm_bulk_del_jobs(realm_id):
     """Multiple job post
@@ -210,6 +250,7 @@ def realm_bulk_del_jobs(realm_id):
 
 @bottle.delete('/jobs')
 @wrap_json_error
+@request_timer('/jobs', 'delete')
 @profile_function(profile)
 def realms_bulk_del_jobs():
     """Multiple job delete across multiple realms
@@ -240,6 +281,7 @@ def move_job(realm_id, job_id, from_q, to_q):
 
 @bottle.get('/<realm_id>/job/<job_id>')
 @wrap_json_error
+@request_timer('/realm/job', 'get')
 @profile_function(profile)
 def get_job(realm_id, job_id):
     """Get the status of a job"""
@@ -250,6 +292,7 @@ def get_job(realm_id, job_id):
 
 @bottle.get('/<realm_id>/tag/<tag_id>')
 @wrap_json_error
+@request_timer('/realm/tag', 'get')
 @profile_function(profile)
 def get_tagged_jobs(realm_id, tag_id):
     """return a dict of all jobs tagged by tag_id"""
@@ -260,6 +303,7 @@ def get_tagged_jobs(realm_id, tag_id):
 
 @bottle.get('/<realm_id>/tag/<tag_id>/status')
 @wrap_json_error
+@request_timer('/realm/tag/status', 'get')
 @profile_function(profile)
 def get_tag_status(realm_id, tag_id):
     """return an int of the number of jobs related to tag_id"""
@@ -270,17 +314,49 @@ def get_tag_status(realm_id, tag_id):
 
 @bottle.get('/<realm_id>/job')
 @wrap_json_error
+@request_timer('/realm/job', 'get')
 @profile_function(profile)
-def pull_jobs(realm_id):
+def pull_realm_jobs(realm_id):
     """pull the next set of jobs from the realm"""
     realm = realms.get(realm_id)
     count = request.GET.get('count', default=1, type=int)
-    job = realm.pull(count=count)
+    max_queue = request.GET.get('max-queue')
+    job = realm.pull(count=count, max_queue=max_queue)
     return job
 
+@bottle.get('/job')
+@wrap_json_error
+@request_timer('/job', 'get')
+@profile_function(profile)
+def pull_jobs():
+    """pull next priority jobs across all/subset of realms
+
+    This makes the assumption that queue names between realms are
+    sortable/comparable and any job_id's used are unique across realms.
+
+    No effort is made to pull based on insert order across realms/queues
+    it is only guaranteed to prioritise based on queue names within realms.
+
+    Optional query params:
+    count - number of jobs to pull (default: 1)
+    realms - comma-separated list of realm names to pull from (default: all)
+
+    return: {
+        'job_id1': ['realm_id', 'queue', 'data'],
+        'job_id2': ['realm_id', 'queue', 'data'],
+        ...
+    }
+    """
+    rlms = [r for r in request.GET.get('realms', '').split(',') if r]
+    count = request.GET.get('count', default=1, type=int)
+    if not rlms:
+        rlms = [r.realm_id for r in realms.current()]
+
+    return realms.pull(realms=rlms, count=count)
 
 @bottle.get('/<realm_id>/queues/<queue_id>/clear')
 @wrap_json_error
+@request_timer('/realm/status', 'get')
 @profile_function(profile)
 def clear_queue(realm_id, queue_id):
     """remove all jobs from the given queue"""
@@ -302,6 +378,7 @@ def get_realm_status(realm_id):
 
 @bottle.post('/<realm_id>/config')
 @wrap_json_error
+@request_timer('/realm/config', 'post')
 @profile_function(profile)
 def update_realm_config(realm_id):
     """update the configuration of a realm"""
@@ -339,6 +416,7 @@ def update_realm_config(realm_id):
 
 @bottle.delete('/<realm_id>/')
 @wrap_json_error
+@request_timer('/realm', 'delete')
 @profile_function(profile)
 def delete_realm(realm_id):
     realms.delete(realm_id)
@@ -347,6 +425,7 @@ def delete_realm(realm_id):
 
 @bottle.get('/performance')
 @wrap_json_error
+@request_timer('/performance', 'get')
 @profile_function(profile)
 def webapp_performance():
     """return the performance of the webapp"""
@@ -355,10 +434,18 @@ def webapp_performance():
 
 @bottle.get('/')
 @wrap_json_error
+@request_timer('/', 'get')
 @profile_function(profile)
 def realms_status():
     """return all of the realms and their statuses"""
     return realms.get_status()
+
+@bottle.get('/metrics')
+@request_timer('/metrics', 'get')
+def prometheus_metrics():
+    """Prometheus exporter api"""
+    response.content_type = prometheus_client.CONTENT_TYPE_LATEST
+    return prometheus_client.generate_latest()
 
 
 app = bottle.default_app()
